@@ -52,16 +52,55 @@ export const LaCasaPage: React.FC = () => {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <img
-              src="/images/habitacion1.jpg"
-              alt="Dormitorio en casa rural Cantabria 11 personas"
-              className="rounded-2xl shadow-lg"
+              src="/images/porche.jpg"
+              alt="Porche exterior La Rasilla Valles Pasiegos"
+              className="rounded-2xl shadow-lg w-full aspect-[4/3] object-cover"
             />
             <img
-              src="/images/salon1.jpg"
-              alt="Salón en alojamiento rural Valles Pasiegos"
-              className="mt-12 rounded-2xl shadow-lg"
+              src="/images/porche2.jpg"
+              alt="Jardín y porche casa rural Cantabria"
+              className="rounded-2xl shadow-lg w-full aspect-[4/3] object-cover"
+            />
+            <img
+              src="/images/habitacion1.jpg"
+              alt="Habitación doble casa rural Cantabria"
+              className="rounded-2xl shadow-lg w-full aspect-[4/3] object-cover"
+            />
+            <img
+              src="/images/habitacion2.jpg"
+              alt="Habitación doble Valles Pasiegos"
+              className="rounded-2xl shadow-lg w-full aspect-[4/3] object-cover"
+            />
+            <img
+              src="/images/habitacion3.jpg"
+              alt="Habitación con vistas al valle"
+              className="rounded-2xl shadow-lg w-full aspect-[4/3] object-cover"
+            />
+            <img
+              src="/images/habitacion4.jpg"
+              alt="Dormitorio casa rural 11 personas Cantabria"
+              className="rounded-2xl shadow-lg w-full aspect-[4/3] object-cover"
             />
           </div>
+        </div>
+
+        {/* Row of 3 smaller photos */}
+        <div className="grid grid-cols-3 gap-4 mt-12">
+          <img
+            src="/images/cocina.jpg"
+            alt="Cocina equipada casa rural Cantabria"
+            className="rounded-2xl shadow-md w-full h-48 object-cover"
+          />
+          <img
+            src="/images/salon1.jpg"
+            alt="Salón principal casa rural Valles Pasiegos"
+            className="rounded-2xl shadow-md w-full h-48 object-cover"
+          />
+          <img
+            src="/images/aseo1.jpg"
+            alt="Baño completo casa rural Cantabria"
+            className="rounded-2xl shadow-md w-full h-48 object-cover"
+          />
         </div>
       </SectionContainer>
 

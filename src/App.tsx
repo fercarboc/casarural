@@ -7,6 +7,7 @@ import { LaCasaPage } from './public/pages/LaCasaPage';
 import { GaleriaPage } from './public/pages/GaleriaPage';
 import { ServiciosPage } from './public/pages/ServiciosPage';
 import { ContactoPage } from './public/pages/ContactoPage';
+import { SoportePage } from './public/pages/SoportePage';
 import { DondeEstamosPage } from './public/pages/DondeEstamosPage';
 import { Footer } from './public/components/Footer';
 import { 
@@ -33,6 +34,8 @@ import { InvoicesPage } from './admin/pages/InvoicesPage';
 import { ConfigPage } from './admin/pages/ConfigPage';
 import { ICalPage } from './admin/pages/ICalPage';
 
+import { ReservationViewPage } from './public/pages/ReservationViewPage';
+import ReservaConfirmada from './public/pages/ReservaConfirmada';
 import { isMockMode } from './integrations/supabase/client';
 import { SupabaseSetup } from './components/SupabaseSetup';
 
@@ -77,6 +80,8 @@ export default function App() {
           <Route path="/donde-estamos" element={<PublicLayout><DondeEstamosPage /></PublicLayout>} />
           <Route path="/contacto" element={<PublicLayout><ContactoPage /></PublicLayout>} />
           <Route path="/reservar" element={<PublicLayout><BookingPage /></PublicLayout>} />
+          <Route path="/reserva/confirmada" element={<ReservaConfirmada />} />
+          <Route path="/reserva/:token" element={<PublicLayout><ReservationViewPage /></PublicLayout>} />
           
           {/* Legal Routes */}
           <Route path="/aviso-legal" element={<PublicLayout><AvisoLegal /></PublicLayout>} />
@@ -85,6 +90,7 @@ export default function App() {
           <Route path="/rgpd" element={<PublicLayout><RGPD /></PublicLayout>} />
           <Route path="/condiciones-reserva" element={<PublicLayout><CondicionesReserva /></PublicLayout>} />
           <Route path="/politica-cancelaciones" element={<PublicLayout><PoliticaCancelaciones /></PublicLayout>} />
+          <Route path="/soporte" element={<PublicLayout><SoportePage /></PublicLayout>} />
           
           {/* Admin Auth */}
           <Route path="/admin/login" element={<LoginPage />} />

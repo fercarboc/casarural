@@ -1,12 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
-import { isAfter, isBefore, isSameDay, addDays, startOfToday, differenceInDays, parseISO } from 'date-fns';
-import { ShieldCheck, Info, AlertCircle, CheckCircle2, Calendar, Zap, CreditCard, MessageSquare } from 'lucide-react';
+import { isBefore, isSameDay, parseISO } from 'date-fns';
+import { ShieldCheck, Info, AlertCircle, CheckCircle2, Calendar, Zap, CreditCard } from 'lucide-react';
 
 import { AvailabilityCalendar } from '../components/AvailabilityCalendar';
-import { BookingSearchForm } from '../components/BookingSearchForm';
-import { RateCard } from '../components/RateCard';
-import { BookingSummaryCard } from '../components/BookingSummaryCard';
+import { BookingCheckoutSection, CustomerFormData } from '../components/BookingCheckoutSection';
 import { bookingService } from '../../services/booking.service';
 import { calendarService } from '../../services/calendar.service';
 import { RateType } from '../../shared/types';
@@ -21,12 +19,13 @@ export default function BookingPage() {
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [isAvailable, setIsAvailable] = useState<boolean | null>(null);
-  const [priceBreakdown, setPriceBreakdown] = useState<PriceBreakdown | null>(null);
+  const [flexibleBreakdown, setFlexibleBreakdown] = useState<PriceBreakdown | null>(null);
+  const [nonRefundableBreakdown, setNonRefundableBreakdown] = useState<PriceBreakdown | null>(null);
+  const [showCheckout, setShowCheckout] = useState(false);
   const [isBooking, setIsBooking] = useState(false);
-  const [bookingSuccess, setBookingSuccess] = useState(false);
+  const [bookingError, setBookingError] = useState<string | null>(null);
   const [occupiedDates, setOccupiedDates] = useState<Date[]>([]);
-
-  const today = startOfToday();
+  const checkoutRef = useRef<HTMLDivElement>(null);
 
   const getMinStay = (date: Date | null): { nights: number; label: string } => {
     if (!date) return { nights: 2, label: 'Temporada general' };
@@ -38,23 +37,17 @@ export default function BookingPage() {
   const minStay = getMinStay(checkIn);
 
   useEffect(() => {
-    const fetchOccupiedDates = async () => {
-      try {
-        const dates = await calendarService.getOccupiedDates();
-        setOccupiedDates(dates.map(d => parseISO(d)));
-      } catch (error) {
-        console.error('Error fetching occupied dates:', error);
-      }
-    };
-    fetchOccupiedDates();
+    calendarService.getOccupiedDates()
+      .then(dates => setOccupiedDates(dates.map(d => parseISO(d))))
+      .catch(console.error);
   }, []);
 
-  // Handle date selection logic
   const handleSelectDate = (date: Date) => {
     if (!checkIn || (checkIn && checkOut)) {
       setCheckIn(date);
       setCheckOut(null);
       setHasSearched(false);
+      setShowCheckout(false);
     } else if (checkIn && !checkOut) {
       if (isBefore(date, checkIn)) {
         setCheckIn(date);
@@ -71,89 +64,64 @@ export default function BookingPage() {
   const handleSearch = async () => {
     if (!isValidSearch) return;
     setIsSearching(true);
-    
+    setShowCheckout(false);
     try {
-      // Simulate availability check
       const availability = await bookingService.getAvailability(checkIn!, checkOut!);
       const allAvailable = availability.every(d => d.isAvailable);
-      
       setIsAvailable(allAvailable);
       if (allAvailable) {
-        const breakdown = bookingService.calculatePrice(checkIn!, checkOut!, guests, rateType);
-        setPriceBreakdown(breakdown);
+        setFlexibleBreakdown(bookingService.calculatePrice(checkIn!, checkOut!, guests, 'FLEXIBLE'));
+        setNonRefundableBreakdown(bookingService.calculatePrice(checkIn!, checkOut!, guests, 'NON_REFUNDABLE'));
       }
-    } catch (error) {
-      console.error('Error checking availability', error);
+    } catch (err) {
+      console.error('Error checking availability', err);
     } finally {
       setIsSearching(false);
       setHasSearched(true);
     }
   };
 
-  // Recalculate price when rate or guests change
+  // Recalculate when guests change
   useEffect(() => {
     if (checkIn && checkOut && hasSearched && isAvailable) {
-      const breakdown = bookingService.calculatePrice(checkIn, checkOut, guests, rateType);
-      setPriceBreakdown(breakdown);
+      setFlexibleBreakdown(bookingService.calculatePrice(checkIn, checkOut, guests, 'FLEXIBLE'));
+      setNonRefundableBreakdown(bookingService.calculatePrice(checkIn, checkOut, guests, 'NON_REFUNDABLE'));
     }
-  }, [rateType, guests, checkIn, checkOut, hasSearched, isAvailable]);
+  }, [guests, checkIn, checkOut, hasSearched, isAvailable]);
 
-  const handleConfirmBooking = async () => {
-    setIsBooking(true);
-    try {
-      await bookingService.createReservation({
-        checkIn: checkIn!.toISOString(),
-        checkOut: checkOut!.toISOString(),
-        guests,
-        rateType,
-        customerName: 'Cliente Mock',
-        customerEmail: 'mock@example.com',
-        customerPhone: '600000000',
-        total: priceBreakdown?.total || 0
-      });
-      setBookingSuccess(true);
-    } catch (error) {
-      console.error('Booking error', error);
-    } finally {
-      setIsBooking(false);
-    }
+  const handleContinueToCheckout = () => {
+    setShowCheckout(true);
+    setTimeout(() => checkoutRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
   };
 
-  if (bookingSuccess) {
-    return (
-      <div className="mx-auto max-w-2xl px-6 py-24 text-center">
-        <MetaTags 
-          title="¡Reserva confirmada! | La Rasilla"
-          description="Tu reserva en La Rasilla ha sido procesada correctamente. ¡Te esperamos!"
-        />
-        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
-          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
-            <CheckCircle2 size={40} />
-          </div>
-          <h2 className="text-3xl font-serif font-bold text-stone-800">¡Reserva iniciada!</h2>
-          <p className="mt-4 text-stone-600">
-            Hemos bloqueado las fechas para ti. En unos segundos serás redirigido a Stripe para completar el pago.
-          </p>
-          <div className="mt-10 rounded-2xl border border-stone-200 bg-white p-8 text-left">
-            <h4 className="font-bold text-stone-800">Detalles de la pre-reserva</h4>
-            <div className="mt-4 space-y-2 text-sm text-stone-600">
-              <p><strong>Entrada:</strong> {checkIn && checkIn.toLocaleDateString()}</p>
-              <p><strong>Salida:</strong> {checkOut && checkOut.toLocaleDateString()}</p>
-              <p><strong>Huéspedes:</strong> {guests}</p>
-              <p><strong>Total:</strong> {priceBreakdown?.total.toFixed(2)}€</p>
-            </div>
-          </div>
-          <button 
-            onClick={() => window.location.href = '/'}
-            className="mt-8 text-sm font-bold text-emerald-700 hover:underline"
-          >
-            Volver al inicio
-          </button>
-        </motion.div>
-      </div>
-    );
-  }
+  const handlePay = async (form: CustomerFormData) => {
+    if (!checkIn || !checkOut) return;
+    setIsBooking(true);
+    setBookingError(null);
+    try {
+      const result = await bookingService.createReservation({
+        checkIn: checkIn.toISOString(),
+        checkOut: checkOut.toISOString(),
+        guests,
+        menores: form.menores,
+        rateType,
+        customerName: `${form.nombre} ${form.apellidos}`,
+        customerEmail: form.email,
+        customerPhone: form.telefono,
+        customerDni: form.numero_documento,
+        total: (rateType === 'FLEXIBLE' ? flexibleBreakdown! : nonRefundableBreakdown!).total,
+      });
+      // Redirigir a la pasarela de pago de Stripe
+      window.location.href = result.stripeUrl;
+    } catch (err: any) {
+      console.error('Booking error', err);
+      setBookingError(err?.message ?? 'Error al procesar la reserva. Inténtalo de nuevo.');
+      setIsBooking(false);
+    }
+    // No resetear isBooking en éxito: el navegador está redirigiendo a Stripe
+  };
 
+  // ── Página principal ──────────────────────────────────────
   return (
     <div className="mx-auto max-w-7xl px-6 py-12">
       <MetaTags
@@ -168,9 +136,9 @@ export default function BookingPage() {
         </p>
       </header>
 
+      {/* ── Búsqueda + Calendario ─────────────────────────── */}
       <div className="grid gap-8 lg:grid-cols-12">
 
-        {/* ── LEFT: Formulario + Resultados ── */}
         <div className="lg:col-span-7 space-y-6">
 
           {/* Trust badges */}
@@ -189,10 +157,9 @@ export default function BookingPage() {
             </div>
           </div>
 
-          {/* Formulario de selección */}
+          {/* Formulario fechas */}
           <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm space-y-5">
             <div className="grid grid-cols-3 gap-4">
-              {/* Entrada */}
               <div className="space-y-1">
                 <label className="flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-stone-400">
                   <Calendar size={12} /> Entrada
@@ -201,7 +168,6 @@ export default function BookingPage() {
                   {checkIn ? checkIn.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }) : '↓ Calendario'}
                 </div>
               </div>
-              {/* Salida */}
               <div className="space-y-1">
                 <label className="flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-stone-400">
                   <Calendar size={12} /> Salida
@@ -210,7 +176,6 @@ export default function BookingPage() {
                   {checkOut ? checkOut.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }) : '↓ Calendario'}
                 </div>
               </div>
-              {/* Huéspedes */}
               <div className="space-y-1">
                 <label className="flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-stone-400">
                   Huéspedes
@@ -227,21 +192,19 @@ export default function BookingPage() {
               </div>
             </div>
 
-            {/* Aviso estancia mínima */}
             <div className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm border ${checkIn ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-stone-50 border-stone-200 text-stone-500'}`}>
               <Info size={15} className="shrink-0" />
-              <span>
-                <strong>Estancia mínima: {minStay.nights} noches</strong>
-                {' '}· {minStay.label}
-              </span>
+              <span><strong>Estancia mínima: {minStay.nights} noches</strong> · {minStay.label}</span>
             </div>
 
             <button
-              disabled={!isValidSearch}
+              disabled={!isValidSearch || isSearching}
               onClick={handleSearch}
               className="w-full rounded-xl bg-emerald-700 py-4 text-sm font-bold text-white shadow-md transition-all hover:bg-emerald-800 hover:scale-[1.01] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
             >
-              Consultar Disponibilidad
+              {isSearching
+                ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />Consultando...</span>
+                : 'Consultar Disponibilidad'}
             </button>
           </div>
 
@@ -257,8 +220,8 @@ export default function BookingPage() {
             </motion.div>
           )}
 
-          {/* Disponible: tarifas con desglose */}
-          {hasSearched && isAvailable === true && priceBreakdown && checkIn && checkOut && (
+          {/* Disponible: tarifas */}
+          {hasSearched && isAvailable && flexibleBreakdown && nonRefundableBreakdown && checkIn && checkOut && !showCheckout && (
             <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
 
               <div className="flex items-center gap-2 rounded-2xl bg-emerald-50 p-4 text-emerald-800 border border-emerald-200">
@@ -266,71 +229,61 @@ export default function BookingPage() {
                 <p className="font-medium text-sm">¡La casa está disponible para tus fechas! Selecciona una tarifa.</p>
               </div>
 
-              {/* Cards de tarifa con desglose completo */}
               <div className="grid grid-cols-2 gap-5">
                 {/* Flexible */}
-                <button
-                  onClick={() => setRateType('FLEXIBLE')}
-                  className={`rounded-2xl border-2 p-5 text-left transition-all space-y-4 ${rateType === 'FLEXIBLE' ? 'border-emerald-600 bg-emerald-50 ring-4 ring-emerald-600/10' : 'border-stone-200 bg-white hover:border-stone-300'}`}
-                >
+                <button onClick={() => setRateType('FLEXIBLE')}
+                  className={`rounded-2xl border-2 p-5 text-left transition-all space-y-4 ${rateType === 'FLEXIBLE' ? 'border-emerald-600 bg-emerald-50 ring-4 ring-emerald-600/10' : 'border-stone-200 bg-white hover:border-stone-300'}`}>
                   <div className="flex justify-between items-start">
                     <div>
                       <p className="text-xs font-bold uppercase tracking-wider text-stone-500">Tarifa Flexible</p>
-                      <p className="text-2xl font-serif font-bold text-stone-900 mt-1">{priceBreakdown.total.toFixed(2)}€</p>
+                      <p className="text-2xl font-serif font-bold text-stone-900 mt-1">{flexibleBreakdown.total.toFixed(2)}€</p>
                     </div>
                     {rateType === 'FLEXIBLE' && <CheckCircle2 size={20} className="text-emerald-600" />}
                   </div>
                   <div className="space-y-1 text-xs text-stone-500 border-t border-stone-200 pt-3">
-                    <div className="flex justify-between"><span>{priceBreakdown.nights} noches × {priceBreakdown.nightlyPrice.toFixed(0)}€</span><span>{priceBreakdown.accommodationTotal.toFixed(2)}€</span></div>
-                    <div className="flex justify-between"><span>Gastos de limpieza</span><span>{priceBreakdown.cleaningFee.toFixed(2)}€</span></div>
-                    {priceBreakdown.extraGuestsTotal > 0 && <div className="flex justify-between"><span>Suplemento huéspedes</span><span>{priceBreakdown.extraGuestsTotal.toFixed(2)}€</span></div>}
-                    <div className="flex justify-between font-bold text-stone-800 text-sm pt-1 border-t border-stone-200"><span>Total</span><span>{priceBreakdown.total.toFixed(2)}€</span></div>
-                    <div className="flex justify-between text-emerald-700 font-medium"><span>Señal ahora (30%)</span><span>{priceBreakdown.depositRequired.toFixed(2)}€</span></div>
+                    <div className="flex justify-between"><span>{flexibleBreakdown.nights} noches × {flexibleBreakdown.nightlyPrice.toFixed(0)}€</span><span>{flexibleBreakdown.accommodationTotal.toFixed(2)}€</span></div>
+                    <div className="flex justify-between"><span>Gastos de limpieza</span><span>{flexibleBreakdown.cleaningFee.toFixed(2)}€</span></div>
+                    {flexibleBreakdown.extraGuestsTotal > 0 && <div className="flex justify-between"><span>Suplemento huéspedes</span><span>{flexibleBreakdown.extraGuestsTotal.toFixed(2)}€</span></div>}
+                    <div className="flex justify-between font-bold text-stone-800 text-sm pt-1 border-t border-stone-200"><span>Total</span><span>{flexibleBreakdown.total.toFixed(2)}€</span></div>
+                    <div className="flex justify-between text-emerald-700 font-medium"><span>Señal ahora (30%)</span><span>{flexibleBreakdown.depositRequired.toFixed(2)}€</span></div>
                   </div>
                   <p className="text-[10px] text-stone-400">Cancela gratis hasta 60 días antes de la entrada.</p>
                 </button>
 
                 {/* No Reembolsable */}
-                <button
-                  onClick={() => setRateType('NON_REFUNDABLE')}
-                  className={`rounded-2xl border-2 p-5 text-left transition-all space-y-4 ${rateType === 'NON_REFUNDABLE' ? 'border-emerald-600 bg-emerald-50 ring-4 ring-emerald-600/10' : 'border-stone-200 bg-white hover:border-stone-300'}`}
-                >
+                <button onClick={() => setRateType('NON_REFUNDABLE')}
+                  className={`rounded-2xl border-2 p-5 text-left transition-all space-y-4 ${rateType === 'NON_REFUNDABLE' ? 'border-emerald-600 bg-emerald-50 ring-4 ring-emerald-600/10' : 'border-stone-200 bg-white hover:border-stone-300'}`}>
                   <div className="flex justify-between items-start">
                     <div>
                       <div className="flex items-center gap-2">
                         <p className="text-xs font-bold uppercase tracking-wider text-stone-500">No Reembolsable</p>
                         <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">−10%</span>
                       </div>
-                      <p className="text-2xl font-serif font-bold text-stone-900 mt-1">{priceBreakdown.total.toFixed(2)}€</p>
+                      <p className="text-2xl font-serif font-bold text-stone-900 mt-1">{nonRefundableBreakdown.total.toFixed(2)}€</p>
                     </div>
                     {rateType === 'NON_REFUNDABLE' && <CheckCircle2 size={20} className="text-emerald-600" />}
                   </div>
                   <div className="space-y-1 text-xs text-stone-500 border-t border-stone-200 pt-3">
-                    <div className="flex justify-between"><span>{priceBreakdown.nights} noches × {priceBreakdown.nightlyPrice.toFixed(0)}€</span><span>{priceBreakdown.accommodationTotal.toFixed(2)}€</span></div>
-                    <div className="flex justify-between"><span>Gastos de limpieza</span><span>{priceBreakdown.cleaningFee.toFixed(2)}€</span></div>
-                    {priceBreakdown.discount > 0 && <div className="flex justify-between text-emerald-700"><span>Descuento 10%</span><span>−{priceBreakdown.discount.toFixed(2)}€</span></div>}
-                    <div className="flex justify-between font-bold text-stone-800 text-sm pt-1 border-t border-stone-200"><span>Total</span><span>{priceBreakdown.total.toFixed(2)}€</span></div>
-                    <div className="flex justify-between text-stone-600 font-medium"><span>Pago completo al reservar</span><span>{priceBreakdown.total.toFixed(2)}€</span></div>
+                    <div className="flex justify-between"><span>{nonRefundableBreakdown.nights} noches × {nonRefundableBreakdown.nightlyPrice.toFixed(0)}€</span><span>{nonRefundableBreakdown.accommodationTotal.toFixed(2)}€</span></div>
+                    <div className="flex justify-between"><span>Gastos de limpieza</span><span>{nonRefundableBreakdown.cleaningFee.toFixed(2)}€</span></div>
+                    {nonRefundableBreakdown.discount > 0 && <div className="flex justify-between text-emerald-700"><span>Descuento 10%</span><span>−{nonRefundableBreakdown.discount.toFixed(2)}€</span></div>}
+                    <div className="flex justify-between font-bold text-stone-800 text-sm pt-1 border-t border-stone-200"><span>Total</span><span>{nonRefundableBreakdown.total.toFixed(2)}€</span></div>
+                    <div className="flex justify-between text-stone-600 font-medium"><span>Pago completo al reservar</span><span>{nonRefundableBreakdown.total.toFixed(2)}€</span></div>
                   </div>
                   <p className="text-[10px] text-stone-400">Sin posibilidad de cancelación ni cambios.</p>
                 </button>
               </div>
 
-              {/* Botón de pago */}
+              {/* Continuar */}
               <button
-                onClick={handleConfirmBooking}
-                disabled={isBooking}
-                className="w-full rounded-xl bg-stone-900 py-5 text-base font-bold text-white shadow-xl transition-all hover:bg-stone-800 hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50"
+                onClick={handleContinueToCheckout}
+                className="w-full rounded-xl bg-stone-900 py-5 text-base font-bold text-white shadow-xl transition-all hover:bg-stone-800 hover:scale-[1.01] active:scale-[0.99]"
               >
-                {isBooking ? (
-                  <span className="flex items-center justify-center gap-2"><span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" /> Procesando...</span>
-                ) : (
-                  `Confirmar y Pagar ${priceBreakdown.total.toFixed(2)}€`
-                )}
+                Continuar con la reserva →
               </button>
 
               {/* Política de cancelación */}
-              <div id="condiciones-cancelacion" className="rounded-2xl border border-stone-200 bg-white p-6">
+              <div className="rounded-2xl border border-stone-200 bg-white p-6">
                 <h3 className="flex items-center gap-2 text-base font-bold text-stone-800 mb-4">
                   <Info size={16} className="text-emerald-700" /> Política de cancelación
                 </h3>
@@ -344,7 +297,7 @@ export default function BookingPage() {
                   </div>
                   <div>
                     <p className="text-xs font-bold uppercase tracking-wider text-stone-400 mb-2">No Reembolsable</p>
-                    <p className="text-stone-600 leading-relaxed">No admite devoluciones ni cambios bajo ninguna circunstancia. El 100% del importe se cobra al reservar.</p>
+                    <p className="text-stone-600 leading-relaxed">No admite devoluciones ni cambios bajo ninguna circunstancia. El 100% se cobra al reservar.</p>
                   </div>
                 </div>
               </div>
@@ -352,24 +305,61 @@ export default function BookingPage() {
           )}
         </div>
 
-        {/* ── RIGHT: Calendario (sticky) ── */}
-        <div className="lg:col-span-5">
-          <div className="sticky top-6 space-y-4">
-            {/* Aviso mínimo en el calendario */}
-            <div className="flex items-center gap-2 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
-              <Info size={15} className="shrink-0" />
-              <span>Selecciona las fechas de llegada y salida · Mínimo <strong>{minStay.nights} noches</strong></span>
+        {/* ── RIGHT: Calendario (sticky, oculto en checkout) ── */}
+        {!showCheckout && (
+          <div className="lg:col-span-5">
+            <div className="sticky top-6 space-y-4">
+              <div className="flex items-center gap-2 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
+                <Info size={15} className="shrink-0" />
+                <span>Selecciona las fechas de llegada y salida · Mínimo <strong>{minStay.nights} noches</strong></span>
+              </div>
+              <AvailabilityCalendar
+                selectedRange={{ start: checkIn, end: checkOut }}
+                onSelectDate={handleSelectDate}
+                occupiedDates={occupiedDates}
+              />
             </div>
-            <AvailabilityCalendar
-              selectedRange={{ start: checkIn, end: checkOut }}
-              onSelectDate={handleSelectDate}
-              occupiedDates={occupiedDates}
-            />
           </div>
-        </div>
-
+        )}
       </div>
+
+      {/* ── CHECKOUT: ancho completo ─────────────────────── */}
+      {showCheckout && flexibleBreakdown && nonRefundableBreakdown && checkIn && checkOut && (
+        <motion.div
+          ref={checkoutRef}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-8"
+        >
+          <BookingCheckoutSection
+            checkIn={checkIn}
+            checkOut={checkOut}
+            guests={guests}
+            rateType={rateType}
+            flexibleBreakdown={flexibleBreakdown}
+            nonRefundableBreakdown={nonRefundableBreakdown}
+            onRateChange={setRateType}
+            onPay={handlePay}
+            onBack={() => { setShowCheckout(false); setBookingError(null); }}
+            isProcessing={isBooking}
+          />
+          {bookingError && (
+            <div className="mt-4 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              <AlertCircle size={16} className="shrink-0 mt-0.5" />
+              <span>{bookingError}</span>
+            </div>
+          )}
+        </motion.div>
+      )}
     </div>
   );
 }
 
+function Row({ label, value, bold, className }: { label: string; value: string; bold?: boolean; className?: string }) {
+  return (
+    <div className={`flex justify-between ${className ?? ''}`}>
+      <span className="text-stone-500">{label}</span>
+      <span className={bold ? 'font-bold text-stone-900' : 'text-stone-700'}>{value}</span>
+    </div>
+  );
+}

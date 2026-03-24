@@ -4,7 +4,7 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import Stripe from 'https://esm.sh/stripe@14?target=deno';
+import Stripe from 'npm:stripe@17';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -25,56 +25,65 @@ serve(async (req) => {
     const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, { apiVersion: '2024-06-20' });
 
     const { data: reserva, error } = await supabase
-      .from('reservas')
-      .select('*')
-      .eq('id', reservaId)
-      .single();
+      .from('reservas').select('*').eq('id', reservaId).single();
 
     if (error || !reserva) return Response.json({ error: 'Reserva no encontrada' }, { status: 404, headers: corsHeaders });
     if (reserva.estado !== 'PENDING_PAYMENT') return Response.json({ error: 'La reserva no está pendiente de pago' }, { status: 400, headers: corsHeaders });
-
-    const appUrl    = Deno.env.get('APP_URL') ?? 'https://casarurallarasilla.com';
+    // APP_URL: producción → dominio real | desarrollo → localhost
+    const appUrl = Deno.env.get('APP_URL') ?? 'http://localhost:5173';
     const isFlexible = reserva.tarifa === 'FLEXIBLE';
     const importePago = isFlexible ? reserva.importe_senal : reserva.total;
-    const importeCents = Math.round(importePago * 100);
 
-    // Para tarifa flexible: un único ítem con la señal
-    // Para no reembolsable: desglose completo
     let lineItems: Stripe.Checkout.SessionCreateParams.LineItem[];
 
     if (isFlexible) {
+      // ─── TARIFA FLEXIBLE: cobrar solo la señal (50%) ───────────────────────
+      // Un único line item claro. El desglose completo se muestra en la web.
       lineItems = [{
         price_data: {
           currency: 'eur',
           product_data: {
-            name: `Señal reserva La Rasilla (${reserva.noches} noches) — ${reserva.fecha_entrada} → ${reserva.fecha_salida}`,
-            description: `El resto (${(reserva.total - importePago).toFixed(2)}€) se abonará 30 días antes de la llegada.`,
+            name: `Señal — La Rasilla (${reserva.noches} noche${reserva.noches > 1 ? 's' : ''})`,
+            description: `Estancia ${reserva.fecha_entrada} → ${reserva.fecha_salida} · ${reserva.num_huespedes} huéspedes. Resto: ${(reserva.total - importePago).toFixed(2)} € a abonar antes de la llegada.`,
           },
-          unit_amount: importeCents,
+          unit_amount: Math.round(importePago * 100),
         },
         quantity: 1,
       }];
     } else {
+      // ─── TARIFA NO REEMBOLSABLE: desglose completo en el recibo ────────────
+      // Stripe no admite unit_amount negativo en Checkout Sessions,
+      // así que el descuento se netea sobre el importe de alojamiento.
+      const descuentoImporte = reserva.descuento ?? 0;
+      const alojamientoConDescuento = reserva.importe_alojamiento - descuentoImporte;
+      const descuentoLabel = descuentoImporte > 0
+        ? ` (incluye −10% no reembolsable: −${descuentoImporte.toFixed(2)} €)`
+        : '';
+
       lineItems = [
         {
           price_data: {
             currency: 'eur',
             product_data: {
               name: `La Rasilla — ${reserva.noches} noche${reserva.noches > 1 ? 's' : ''}`,
-              description: `${reserva.fecha_entrada} → ${reserva.fecha_salida} · ${reserva.num_huespedes} huéspedes`,
+              description: `Alojamiento${descuentoLabel}`,
             },
-            unit_amount: Math.round(reserva.importe_alojamiento * 100),
+            unit_amount: Math.round(alojamientoConDescuento * 100),
           },
           quantity: 1,
         },
+
+        // Suplemento huésped extra (solo si aplica)
         ...(reserva.importe_extra > 0 ? [{
           price_data: {
             currency: 'eur',
-            product_data: { name: 'Suplemento huésped extra' },
+            product_data: { name: `Suplemento huésped extra (${reserva.noches} noches)` },
             unit_amount: Math.round(reserva.importe_extra * 100),
           },
           quantity: 1,
         }] : []),
+
+        // Limpieza (siempre presente)
         {
           price_data: {
             currency: 'eur',
@@ -93,23 +102,27 @@ serve(async (req) => {
       success_url: `${appUrl}/reserva/confirmada?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url:  `${appUrl}/reservar?cancelled=true`,
       metadata: {
-        reserva_id: reserva.id,
-        tarifa:     reserva.tarifa,
-        es_senal:   isFlexible ? 'true' : 'false',
+        reserva_id:     reserva.id,
+        reserva_codigo: reserva.codigo,
+        tarifa:         reserva.tarifa,
+        es_senal:       isFlexible ? 'true' : 'false',
       },
-      expires_at: Math.floor(Date.now() / 1000) + 60 * 30,
+      expires_at: Math.floor(Date.now() / 1000) + 60 * 30, // 30 minutos
       payment_intent_data: {
         metadata: { reserva_id: reserva.id },
       },
     });
 
-    // Guardar session id en la reserva
+    // Guardar session_id en la reserva
     await supabase
       .from('reservas')
       .update({ stripe_session_id: session.id })
       .eq('id', reservaId);
 
-    return Response.json({ checkout_url: session.url, session_id: session.id }, { headers: corsHeaders });
+    return Response.json(
+      { checkout_url: session.url, session_id: session.id },
+      { headers: corsHeaders }
+    );
 
   } catch (err) {
     console.error('create-stripe-checkout error:', err);

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   Calendar, 
@@ -15,11 +15,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
-interface AdminLayoutProps {
-  children: React.ReactNode;
-}
-
-export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
+export const AdminLayout: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const { signOut, user } = useAuth();
   const navigate = useNavigate();
@@ -83,7 +79,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       {/* Main Content */}
       <main className="flex-1 overflow-auto p-4 md:p-8">
         <div className="mx-auto max-w-6xl">
-          {children}
+          <Outlet />
         </div>
       </main>
     </div>

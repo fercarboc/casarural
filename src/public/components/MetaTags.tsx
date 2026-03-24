@@ -53,7 +53,7 @@ export const defaultSchema = {
   "name": "La Rasilla",
   "description": "Casa rural de alquiler íntegro en Valles Pasiegos, Cantabria. Capacidad para 11 personas.",
   "url": "https://larasilla.com",
-  "telephone": "+34600000000",
+  "telephone": "+34690288707",
   "address": {
     "@type": "PostalAddress",
     "addressRegion": "Cantabria",

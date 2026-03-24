@@ -30,9 +30,11 @@ export interface BookingRequest {
   checkIn: string;
   checkOut: string;
   guests: number;
+  menores: number;
   rateType: RateType;
   customerName: string;
   customerEmail: string;
   customerPhone: string;
+  customerDni?: string;
   total: number;
 }

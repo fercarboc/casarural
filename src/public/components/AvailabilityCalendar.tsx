@@ -1,5 +1,5 @@
 import React from 'react';
-import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isBefore, startOfToday, isWithinInterval } from 'date-fns';
+import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isBefore, startOfToday, isWithinInterval, getDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
@@ -65,7 +65,11 @@ export const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
       </div>
 
       <div className="grid grid-cols-7 gap-2">
-        {days.map((day, i) => {
+        {/* Empty cells to offset first day of month (Monday-first calendar) */}
+        {Array.from({ length: (getDay(days[0]) + 6) % 7 }).map((_, i) => (
+          <div key={`empty-${i}`} />
+        ))}
+        {days.map((day) => {
           const occupied = isDateOccupied(day);
           const past = isBefore(day, today);
           const selected = isDateSelected(day);

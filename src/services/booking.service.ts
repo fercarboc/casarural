@@ -150,7 +150,7 @@ export const bookingService = {
     };
   },
 
-  async createReservation(request: BookingRequest): Promise<{ id: string; stripeUrl: string }> {
+  async createReservation(request: BookingRequest): Promise<{ id: string; token: string; stripeUrl: string }> {
     if (isMockMode) {
       const res = await createMockReservation({
         guestName: request.customerName,
@@ -165,7 +165,7 @@ export const bookingService = {
         source: 'DIRECT_WEB',
       });
       await new Promise(resolve => setTimeout(resolve, 1000));
-      return { id: res.id, stripeUrl: '/reservar/confirmacion?id=' + res.id };
+      return { id: res.id, token: 'mock-token', stripeUrl: '/reservar/confirmacion?id=' + res.id };
     }
 
     // Calcular precio de nuevo para evitar manipulación del cliente
@@ -188,9 +188,11 @@ export const bookingService = {
         apellidos,
         email: request.customerEmail,
         telefono: request.customerPhone,
+        dni: request.customerDni ?? null,
         fecha_entrada: request.checkIn.split('T')[0],
         fecha_salida: request.checkOut.split('T')[0],
         num_huespedes: request.guests,
+        menores: request.menores ?? 0,
         temporada: isHighSeason ? 'ALTA' : 'BASE',
         tarifa: request.rateType === 'NON_REFUNDABLE' ? 'NO_REEMBOLSABLE' : 'FLEXIBLE',
         precio_noche: precio.nightlyPrice,
@@ -206,15 +208,23 @@ export const bookingService = {
         origen: 'DIRECT_WEB',
         expires_at,
       })
-      .select('id')
+      .select('id, token_cliente')
       .single();
 
     if (error) throw error;
 
-    // TODO: Aquí irá la Edge Function de Stripe Checkout
+    // Llamar a la Edge Function de Stripe para crear la sesión de checkout
+    const { data: checkout, error: checkoutError } = await supabase.functions.invoke('create-stripe-checkout', {
+      body: { reservaId: data.id },
+    });
+
+    if (checkoutError) throw new Error(`Error al crear el pago: ${checkoutError.message}`);
+    if (!checkout?.checkout_url) throw new Error('No se recibió URL de pago de Stripe');
+
     return {
       id: data.id,
-      stripeUrl: '/reservar/confirmacion?id=' + data.id,
+      token: data.token_cliente,
+      stripeUrl: checkout.checkout_url,
     };
   },
 };
