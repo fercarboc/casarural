@@ -77,11 +77,13 @@ export const icalService = {
       return { importados: 0 };
     }
     try {
-      const { data, error } = await supabase.functions.invoke('sync-ical', {
-        body: { feed_id: feedId },
+      const { data, error } = await supabase.functions.invoke('sync-ical-import', {
+        body: { feedId },
       });
       if (error) throw error;
-      return { importados: data?.bloqueos_importados ?? 0 };
+      const result = data?.results?.[0];
+      if (result?.status === 'ERROR') return { importados: 0, error: result.error };
+      return { importados: result?.creadas ?? 0 };
     } catch (err: any) {
       return { importados: 0, error: err.message };
     }
@@ -92,14 +94,17 @@ export const icalService = {
       await new Promise(r => setTimeout(r, 2000));
       return { total: 0, errores: 0 };
     }
-    const feeds = await this.getFeeds();
-    const activos = feeds.filter(f => f.activo);
-    let total = 0, errores = 0;
-    for (const f of activos) {
-      const res = await this.syncFeed(f.id);
-      total += res.importados;
-      if (res.error) errores++;
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-ical-import', {
+        body: {},
+      });
+      if (error) throw error;
+      const results: any[] = data?.results ?? [];
+      const total  = results.reduce((s, r) => s + (r.creadas ?? 0), 0);
+      const errores = results.filter(r => r.status === 'ERROR').length;
+      return { total, errores };
+    } catch (err: any) {
+      return { total: 0, errores: 1 };
     }
-    return { total, errores };
   },
 };

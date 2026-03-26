@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
-import { Download, Calendar, TrendingUp, CreditCard, Users, Loader2 } from 'lucide-react'
+import { Download, TrendingUp, CreditCard, Users, Loader2 } from 'lucide-react'
 import { format, parseISO, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { supabase } from '../../integrations/supabase/client'
@@ -14,6 +14,7 @@ interface ReservaIngreso {
   noches: number; num_huespedes: number
   origen: string; tarifa: string
   total: number; importe_pagado: number | null; importe_senal: number | null
+  comision_plataforma: number
   estado: string; estado_pago: string
   descuento: number
 }
@@ -70,7 +71,7 @@ export const IncomePage: React.FC = () => {
 
     const { data } = await supabase
       .from('reservas')
-      .select('id,codigo,nombre,apellidos,fecha_entrada,fecha_salida,noches,num_huespedes,origen,tarifa,total,importe_pagado,importe_senal,estado,estado_pago,descuento')
+      .select('id,codigo,nombre,apellidos,fecha_entrada,fecha_salida,noches,num_huespedes,origen,tarifa,total,importe_pagado,importe_senal,comision_plataforma,estado,estado_pago,descuento')
       .gte('fecha_entrada', fromStr)
       .lte('fecha_entrada', toStr)
       .neq('estado', 'CANCELLED')
@@ -84,11 +85,13 @@ export const IncomePage: React.FC = () => {
   useEffect(() => { load() }, [load])
 
   // ── Cálculos de resumen ───────────────────────────────────────────────────
-  const totalCobrado    = reservas.reduce((s, r) => s + (r.importe_pagado ?? 0), 0)
-  const totalFacturado  = reservas.reduce((s, r) => s + r.total, 0)
-  const totalPendiente  = reservas.reduce((s, r) => s + Math.max(0, r.total - (r.importe_pagado ?? 0)), 0)
-  const totalNoches     = reservas.reduce((s, r) => s + r.noches, 0)
-  const precioMedioNoche = totalNoches > 0 ? totalFacturado / totalNoches : 0
+  const totalCobrado      = reservas.reduce((s, r) => s + (r.importe_pagado ?? 0), 0)
+  const totalFacturado    = reservas.reduce((s, r) => s + r.total, 0)
+  const totalPendiente    = reservas.reduce((s, r) => s + Math.max(0, r.total - (r.importe_pagado ?? 0)), 0)
+  const totalComisiones   = reservas.reduce((s, r) => s + (r.comision_plataforma ?? 0), 0)
+  const totalNeto         = totalFacturado - totalComisiones
+  const totalNoches       = reservas.reduce((s, r) => s + r.noches, 0)
+  const precioMedioNoche  = totalNoches > 0 ? totalFacturado / totalNoches : 0
 
   // ── Desglose mensual (solo vista año) ────────────────────────────────────
   const monthlyGroups = useMemo(() => {
@@ -322,27 +325,27 @@ export const IncomePage: React.FC = () => {
             {/* Tarjetas de resumen */}
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <StatCard
-                label="Total facturado"
+                label="Bruto facturado"
                 value={fmt(totalFacturado)}
                 icon={<TrendingUp size={16} />}
                 color="violet"
                 sub={`${reservas.length} reservas`}
               />
               <StatCard
-                label="Ingresos cobrados"
-                value={fmt(totalCobrado)}
+                label="Comisiones plataforma"
+                value={fmt(totalComisiones)}
                 icon={<CreditCard size={16} />}
-                color="emerald"
-                sub={totalFacturado > 0 ? `${Math.round(totalCobrado / totalFacturado * 100)}% del total` : undefined}
+                color="amber"
+                sub={totalFacturado > 0 && totalComisiones > 0
+                  ? `${Math.round(totalComisiones / totalFacturado * 100)}% del bruto`
+                  : 'Sin comisiones registradas'}
               />
               <StatCard
-                label="Pendiente de cobro"
-                value={fmt(totalPendiente)}
-                icon={<Calendar size={16} />}
-                color="amber"
-                sub={totalPendiente > 0
-                  ? `${reservas.filter(r => (r.importe_pagado ?? 0) < r.total).length} reservas con saldo pendiente`
-                  : 'Todo cobrado'}
+                label="Neto (bruto − comis.)"
+                value={fmt(totalNeto)}
+                icon={<TrendingUp size={16} />}
+                color="emerald"
+                sub={totalPendiente > 0 ? `Pendiente: ${fmt(totalPendiente)}` : 'Todo cobrado'}
               />
               <StatCard
                 label="Precio medio / noche"
@@ -418,8 +421,9 @@ export const IncomePage: React.FC = () => {
                         <th className="px-4 py-3 text-center text-[10px] font-bold uppercase tracking-wider text-zinc-400">Noch.</th>
                         <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-zinc-400">Origen</th>
                         <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-zinc-400">Tarifa</th>
-                        <th className="px-4 py-3 text-right text-[10px] font-bold uppercase tracking-wider text-zinc-400">Total</th>
-                        <th className="px-4 py-3 text-right text-[10px] font-bold uppercase tracking-wider text-zinc-400">Cobrado</th>
+                        <th className="px-4 py-3 text-right text-[10px] font-bold uppercase tracking-wider text-zinc-400">Bruto</th>
+                        <th className="px-4 py-3 text-right text-[10px] font-bold uppercase tracking-wider text-zinc-400">Comisión</th>
+                        <th className="px-4 py-3 text-right text-[10px] font-bold uppercase tracking-wider text-zinc-400">Neto</th>
                         <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-zinc-400">Estado pago</th>
                       </tr>
                     </thead>
@@ -438,8 +442,11 @@ export const IncomePage: React.FC = () => {
                             </span>
                           </td>
                           <td className="px-4 py-3 text-right font-bold text-zinc-900 whitespace-nowrap">{fmt(r.total)}</td>
+                          <td className="px-4 py-3 text-right text-red-600 whitespace-nowrap">
+                            {r.comision_plataforma > 0 ? fmt(r.comision_plataforma) : <span className="text-zinc-300">—</span>}
+                          </td>
                           <td className="px-4 py-3 text-right font-semibold text-emerald-700 whitespace-nowrap">
-                            {fmt(r.importe_pagado ?? 0)}
+                            {fmt(r.total - (r.comision_plataforma ?? 0))}
                           </td>
                           <td className="px-4 py-3">
                             <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold ${PAGO_STYLE[r.estado_pago] ?? 'bg-zinc-100 text-zinc-500'}`}>
@@ -453,7 +460,8 @@ export const IncomePage: React.FC = () => {
                       <tr className="border-t-2 border-zinc-200 bg-zinc-50">
                         <td colSpan={7} className="px-4 py-3 text-sm font-bold text-zinc-900">Total período</td>
                         <td className="px-4 py-3 text-right text-sm font-bold text-zinc-900 whitespace-nowrap">{fmt(totalFacturado)}</td>
-                        <td className="px-4 py-3 text-right text-sm font-bold text-emerald-700 whitespace-nowrap">{fmt(totalCobrado)}</td>
+                        <td className="px-4 py-3 text-right text-sm font-bold text-red-600 whitespace-nowrap">{totalComisiones > 0 ? fmt(totalComisiones) : '—'}</td>
+                        <td className="px-4 py-3 text-right text-sm font-bold text-emerald-700 whitespace-nowrap">{fmt(totalNeto)}</td>
                         <td></td>
                       </tr>
                     </tfoot>

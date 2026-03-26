@@ -7,6 +7,7 @@ import { AvailabilityCalendar } from '../components/AvailabilityCalendar';
 import { BookingCheckoutSection, CustomerFormData } from '../components/BookingCheckoutSection';
 import { bookingService } from '../../services/booking.service';
 import { calendarService } from '../../services/calendar.service';
+import { configService, PricingConfig } from '../../services/config.service';
 import { RateType } from '../../shared/types';
 import { PriceBreakdown } from '../../shared/types/booking';
 import { MetaTags } from '../components/MetaTags';
@@ -25,6 +26,7 @@ export default function BookingPage() {
   const [isBooking, setIsBooking] = useState(false);
   const [bookingError, setBookingError] = useState<string | null>(null);
   const [occupiedDates, setOccupiedDates] = useState<Date[]>([]);
+  const [pricingConfig, setPricingConfig] = useState<PricingConfig | null>(null);
   const checkoutRef = useRef<HTMLDivElement>(null);
 
   const getMinStay = (date: Date | null): { nights: number; label: string } => {
@@ -39,6 +41,9 @@ export default function BookingPage() {
   useEffect(() => {
     calendarService.getOccupiedDates()
       .then(dates => setOccupiedDates(dates.map(d => parseISO(d))))
+      .catch(console.error);
+    configService.getConfig()
+      .then(cfg => setPricingConfig(cfg))
       .catch(console.error);
   }, []);
 
@@ -70,8 +75,8 @@ export default function BookingPage() {
       const allAvailable = availability.every(d => d.isAvailable);
       setIsAvailable(allAvailable);
       if (allAvailable) {
-        setFlexibleBreakdown(bookingService.calculatePrice(checkIn!, checkOut!, guests, 'FLEXIBLE'));
-        setNonRefundableBreakdown(bookingService.calculatePrice(checkIn!, checkOut!, guests, 'NON_REFUNDABLE'));
+        setFlexibleBreakdown(bookingService.calculatePrice(checkIn!, checkOut!, guests, 'FLEXIBLE', pricingConfig));
+        setNonRefundableBreakdown(bookingService.calculatePrice(checkIn!, checkOut!, guests, 'NON_REFUNDABLE', pricingConfig));
       }
     } catch (err) {
       console.error('Error checking availability', err);
@@ -84,10 +89,10 @@ export default function BookingPage() {
   // Recalculate when guests change
   useEffect(() => {
     if (checkIn && checkOut && hasSearched && isAvailable) {
-      setFlexibleBreakdown(bookingService.calculatePrice(checkIn, checkOut, guests, 'FLEXIBLE'));
-      setNonRefundableBreakdown(bookingService.calculatePrice(checkIn, checkOut, guests, 'NON_REFUNDABLE'));
+      setFlexibleBreakdown(bookingService.calculatePrice(checkIn, checkOut, guests, 'FLEXIBLE', pricingConfig));
+      setNonRefundableBreakdown(bookingService.calculatePrice(checkIn, checkOut, guests, 'NON_REFUNDABLE', pricingConfig));
     }
-  }, [guests, checkIn, checkOut, hasSearched, isAvailable]);
+  }, [guests, checkIn, checkOut, hasSearched, isAvailable, pricingConfig]);
 
   const handleContinueToCheckout = () => {
     setShowCheckout(true);
@@ -98,27 +103,73 @@ export default function BookingPage() {
     if (!checkIn || !checkOut) return;
     setIsBooking(true);
     setBookingError(null);
+
+    const SUPABASE_URL      = (import.meta as any).env.VITE_SUPABASE_URL as string;
+    const SUPABASE_ANON_KEY = (import.meta as any).env.VITE_SUPABASE_ANON_KEY as string;
+    const fmt = (d: Date) => d.toISOString().split('T')[0]; // YYYY-MM-DD
+
     try {
-      const result = await bookingService.createReservation({
-        checkIn: checkIn.toISOString(),
-        checkOut: checkOut.toISOString(),
-        guests,
-        menores: form.menores,
-        rateType,
-        customerName: `${form.nombre} ${form.apellidos}`,
-        customerEmail: form.email,
-        customerPhone: form.telefono,
-        customerDni: form.numero_documento,
-        total: (rateType === 'FLEXIBLE' ? flexibleBreakdown! : nonRefundableBreakdown!).total,
+      // PASO 1 — Crear pre-reserva server-side (Edge Function usa service_role, bypassa RLS)
+      const preRes = await fetch(`${SUPABASE_URL}/functions/v1/create-pre-reservation`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          checkIn:  fmt(checkIn),
+          checkOut: fmt(checkOut),
+          guests,
+          rateType,
+          menores: form.menores ?? 0,
+          guestData: {
+            nombre:    form.nombre,
+            apellidos: form.apellidos,
+            email:     form.email,
+            telefono:  form.telefono,
+            dni:       form.numero_documento ?? '',
+          },
+        }),
       });
-      // Redirigir a la pasarela de pago de Stripe
-      window.location.href = result.stripeUrl;
+
+      const preReserva = await preRes.json();
+      if (!preRes.ok || preReserva.error) {
+        throw new Error(preReserva.error ?? 'Error al crear la reserva');
+      }
+
+      // PASO 2 — Crear sesión de Stripe
+      const checkoutRes = await fetch(`${SUPABASE_URL}/functions/v1/create-stripe-checkout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({ reservaId: preReserva.reserva_id }),
+      });
+
+      const checkout = await checkoutRes.json();
+      if (!checkoutRes.ok || checkout.error) {
+        throw new Error(checkout.error ?? 'Error al iniciar el pago');
+      }
+
+      // PASO 3 — Redirigir a Stripe Checkout
+      window.location.href = checkout.checkout_url;
+      // No resetear isBooking: el navegador está redirigiendo
+
     } catch (err: any) {
       console.error('Booking error', err);
-      setBookingError(err?.message ?? 'Error al procesar la reserva. Inténtalo de nuevo.');
+      const msg: string = err?.message ?? '';
+      if (msg.includes('no están disponibles') || msg.includes('disponibles')) {
+        setBookingError('Las fechas seleccionadas ya no están disponibles. Por favor elige otras fechas.');
+      } else if (msg.includes('estancia mínima') || msg.includes('mínima') || msg.includes('huéspedes')) {
+        setBookingError(msg);
+      } else if (msg) {
+        setBookingError(msg);
+      } else {
+        setBookingError('Ha ocurrido un error al procesar tu reserva. Por favor inténtalo de nuevo.');
+      }
       setIsBooking(false);
     }
-    // No resetear isBooking en éxito: el navegador está redirigiendo a Stripe
   };
 
   // ── Página principal ──────────────────────────────────────
@@ -245,7 +296,7 @@ export default function BookingPage() {
                     <div className="flex justify-between"><span>Gastos de limpieza</span><span>{flexibleBreakdown.cleaningFee.toFixed(2)}€</span></div>
                     {flexibleBreakdown.extraGuestsTotal > 0 && <div className="flex justify-between"><span>Suplemento huéspedes</span><span>{flexibleBreakdown.extraGuestsTotal.toFixed(2)}€</span></div>}
                     <div className="flex justify-between font-bold text-stone-800 text-sm pt-1 border-t border-stone-200"><span>Total</span><span>{flexibleBreakdown.total.toFixed(2)}€</span></div>
-                    <div className="flex justify-between text-emerald-700 font-medium"><span>Señal ahora (30%)</span><span>{flexibleBreakdown.depositRequired.toFixed(2)}€</span></div>
+                    <div className="flex justify-between text-emerald-700 font-medium"><span>Señal ahora ({Math.round(flexibleBreakdown.depositRequired / flexibleBreakdown.total * 100)}%)</span><span>{flexibleBreakdown.depositRequired.toFixed(2)}€</span></div>
                   </div>
                   <p className="text-[10px] text-stone-400">Cancela gratis hasta 60 días antes de la entrada.</p>
                 </button>

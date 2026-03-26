@@ -27,6 +27,9 @@ interface ReservaAdmin {
   origen: string
   total: number
   importe_pagado: number | null
+  importe_senal: number | null
+  comision_plataforma: number
+  fianza: number
   token_cliente: string | null
   notas_admin: string | null
   created_at: string
@@ -97,7 +100,7 @@ export const ReservationsPage: React.FC = () => {
     setLoading(true)
     const { data, error } = await supabase
       .from('reservas')
-      .select('id,codigo,nombre,apellidos,email,telefono,fecha_entrada,fecha_salida,num_huespedes,noches,tarifa,estado,estado_pago,origen,total,importe_pagado,token_cliente,notas_admin,created_at')
+      .select('id,codigo,nombre,apellidos,email,telefono,fecha_entrada,fecha_salida,num_huespedes,noches,tarifa,estado,estado_pago,origen,total,importe_pagado,importe_senal,comision_plataforma,fianza,token_cliente,notas_admin,created_at')
       .order('fecha_entrada', { ascending: false })
     if (!error) setAll(data ?? [])
     setLoading(false)
@@ -263,6 +266,7 @@ export const ReservationsPage: React.FC = () => {
                   onSendCheckin={() => setCheckinModal(r)}
                   onEdit={() => setEditModal(r)}
                   onCancel={() => setCancelModal(r)}
+                  onNameUpdated={(id, nombre) => setAll(prev => prev.map(x => x.id === id ? { ...x, nombre } : x))}
                 />
               ))}
             </tbody>
@@ -278,24 +282,62 @@ export const ReservationsPage: React.FC = () => {
 }
 
 // ─── Fila ──────────────────────────────────────────────────────────────────────
-function ReservaRow({ r, onSendCheckin, onEdit, onCancel }: {
+function ReservaRow({ r, onSendCheckin, onEdit, onCancel, onNameUpdated }: {
   key?: React.Key
   r: ReservaAdmin
   onSendCheckin: () => void
   onEdit: () => void
   onCancel: () => void
+  onNameUpdated: (id: string, nombre: string) => void
 }) {
-  const isEnCasa     = getTabForReserva(r) === 'en_casa' && r.estado === 'CONFIRMED'
-  const canCancel    = r.estado !== 'CANCELLED' && r.estado !== 'EXPIRED'
-  const isInactiva   = r.estado === 'CANCELLED' || r.estado === 'EXPIRED'
+  const isEnCasa   = getTabForReserva(r) === 'en_casa' && r.estado === 'CONFIRMED'
+  const canCancel  = r.estado !== 'CANCELLED' && r.estado !== 'EXPIRED'
+  const isInactiva = r.estado === 'CANCELLED' || r.estado === 'EXPIRED'
+
+  const [editingName, setEditingName] = useState(false)
+  const [nameVal, setNameVal]         = useState(r.nombre)
+  const [savingName, setSavingName]   = useState(false)
+
+  const saveName = async () => {
+    const trimmed = nameVal.trim()
+    if (!trimmed || trimmed === r.nombre) { setEditingName(false); setNameVal(r.nombre); return }
+    setSavingName(true)
+    const { error } = await supabase.from('reservas').update({ nombre: trimmed, updated_at: new Date().toISOString() }).eq('id', r.id)
+    setSavingName(false)
+    if (!error) { onNameUpdated(r.id, trimmed); setEditingName(false) }
+    else setNameVal(r.nombre)
+  }
 
   return (
     <tr className={`transition-colors ${isInactiva ? 'opacity-50 bg-zinc-50/60' : 'hover:bg-zinc-50'}`}>
       <td className="px-5 py-4">
         <div className="flex items-center gap-2">
           {isEnCasa && <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />}
-          <div>
-            <p className="font-bold text-zinc-900">{r.nombre} {r.apellidos}</p>
+          <div className="min-w-0">
+            {editingName ? (
+              <div className="flex items-center gap-1">
+                <input
+                  autoFocus
+                  value={nameVal}
+                  onChange={e => setNameVal(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') saveName(); if (e.key === 'Escape') { setEditingName(false); setNameVal(r.nombre) } }}
+                  onBlur={saveName}
+                  className="w-36 rounded border border-emerald-400 px-2 py-0.5 text-sm font-bold text-zinc-900 outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+                {savingName && <Loader2 size={12} className="animate-spin text-zinc-400 shrink-0" />}
+              </div>
+            ) : (
+              <div className="group flex items-center gap-1">
+                <p className="font-bold text-zinc-900 truncate">{r.nombre} {r.apellidos}</p>
+                <button
+                  onClick={() => { setNameVal(r.nombre); setEditingName(true) }}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity text-zinc-400 hover:text-emerald-600"
+                  title="Editar nombre"
+                >
+                  <Edit2 size={11} />
+                </button>
+              </div>
+            )}
             <p className="text-[10px] text-zinc-400 font-mono">{r.codigo}</p>
           </div>
         </div>
@@ -364,13 +406,16 @@ function EditReservaModal({ reserva, onClose, onSaved }: {
   onSaved: (r: ReservaAdmin) => void
 }) {
   const [form, setForm] = useState({
-    fecha_entrada: reserva.fecha_entrada,
-    fecha_salida:  reserva.fecha_salida,
-    num_huespedes: reserva.num_huespedes,
-    email:         reserva.email,
-    telefono:      reserva.telefono ?? '',
-    total:         reserva.total,
-    notas_admin:   reserva.notas_admin ?? '',
+    fecha_entrada:       reserva.fecha_entrada,
+    fecha_salida:        reserva.fecha_salida,
+    num_huespedes:       reserva.num_huespedes,
+    email:               reserva.email,
+    telefono:            reserva.telefono ?? '',
+    total:               reserva.total,
+    importe_senal:       reserva.importe_senal ?? 0,
+    comision_plataforma: reserva.comision_plataforma ?? 0,
+    fianza:              reserva.fianza ?? 0,
+    notas_admin:         reserva.notas_admin ?? '',
   })
   const [saving, setSaving] = useState(false)
   const [error, setError]   = useState<string | null>(null)
@@ -390,18 +435,21 @@ function EditReservaModal({ reserva, onClose, onSaved }: {
     const { data, error: err } = await supabase
       .from('reservas')
       .update({
-        fecha_entrada: form.fecha_entrada,
-        fecha_salida:  form.fecha_salida,
+        fecha_entrada:       form.fecha_entrada,
+        fecha_salida:        form.fecha_salida,
         noches,
-        num_huespedes: form.num_huespedes,
-        email:         form.email.trim().toLowerCase(),
-        telefono:      form.telefono.trim() || null,
-        total:         form.total,
-        notas_admin:   form.notas_admin.trim() || null,
-        updated_at:    new Date().toISOString(),
+        num_huespedes:       form.num_huespedes,
+        email:               form.email.trim().toLowerCase(),
+        telefono:            form.telefono.trim() || null,
+        total:               form.total,
+        importe_senal:       form.importe_senal > 0 ? form.importe_senal : null,
+        comision_plataforma: form.comision_plataforma,
+        fianza:              form.fianza,
+        notas_admin:         form.notas_admin.trim() || null,
+        updated_at:          new Date().toISOString(),
       })
       .eq('id', reserva.id)
-      .select('id,codigo,nombre,apellidos,email,telefono,fecha_entrada,fecha_salida,num_huespedes,noches,tarifa,estado,estado_pago,origen,total,importe_pagado,token_cliente,notas_admin,created_at')
+      .select('id,codigo,nombre,apellidos,email,telefono,fecha_entrada,fecha_salida,num_huespedes,noches,tarifa,estado,estado_pago,origen,total,importe_pagado,importe_senal,comision_plataforma,fianza,token_cliente,notas_admin,created_at')
       .single()
     setSaving(false)
     if (err) { setError(err.message); return }
@@ -445,13 +493,60 @@ function EditReservaModal({ reserva, onClose, onSaved }: {
           </Field>
         </div>
 
+        {/* Financiero — señal + comisión + pendiente */}
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Señal cobrada (€)">
+            <input type="number" min={0} step={0.01} value={form.importe_senal}
+              onChange={e => set('importe_senal', parseFloat(e.target.value) || 0)}
+              placeholder="0"
+              className={inputCls} />
+          </Field>
+          <Field label="Comisión plataforma (€)">
+            <input type="number" min={0} step={0.01} value={form.comision_plataforma}
+              onChange={e => set('comision_plataforma', parseFloat(e.target.value) || 0)}
+              placeholder="0"
+              className={inputCls} />
+          </Field>
+        </div>
+
+        {/* Fianza — solo reservas directas/manuales */}
+        {(reserva.origen === 'DIRECT_WEB' || reserva.origen === 'ADMIN') && (
+          <Field label="Fianza de daños (€)">
+            <input type="number" min={0} step={0.01} value={form.fianza}
+              onChange={e => set('fianza', parseFloat(e.target.value) || 0)}
+              placeholder="0 — se devuelve a la salida"
+              className={inputCls} />
+            {form.fianza > 0 && (
+              <p className="mt-1 text-[11px] text-blue-600">
+                💡 Fianza reembolsable · devolver {form.fianza.toLocaleString('es-ES', { minimumFractionDigits: 2 })} € al check-out si no hay incidencias
+              </p>
+            )}
+          </Field>
+        )}
+        {(form.comision_plataforma > 0 || form.importe_senal > 0) && (
+          <div className="rounded-xl bg-zinc-50 px-4 py-3 text-xs text-zinc-500 space-y-1">
+            {form.comision_plataforma > 0 && (
+              <div className="flex justify-between">
+                <span>Neto (bruto − comisión)</span>
+                <span className="font-bold text-zinc-700">{(form.total - form.comision_plataforma).toLocaleString('es-ES', { minimumFractionDigits: 2 })} €</span>
+              </div>
+            )}
+            {form.importe_senal > 0 && (
+              <div className="flex justify-between">
+                <span>Pendiente al check-in</span>
+                <span className="font-bold text-amber-600">{Math.max(0, form.total - form.importe_senal).toLocaleString('es-ES', { minimumFractionDigits: 2 })} €</span>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Contacto */}
         <Field label="Email del cliente">
           <input type="email" value={form.email}
             onChange={e => set('email', e.target.value)}
             className={inputCls} />
         </Field>
-        <Field label="Teléfono (opcional)">
+        <Field label="Teléfono">
           <input type="tel" value={form.telefono}
             onChange={e => set('telefono', e.target.value)}
             placeholder="+34 600 000 000"

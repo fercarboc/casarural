@@ -48,7 +48,7 @@ export const BookingCheckoutSection: React.FC<Props> = ({
   onRateChange, onPay, onBack, isProcessing
 }) => {
   const [form, setForm] = useState<CustomerFormData>({ ...EMPTY_FORM, menores: 0 })
-  const [errors, setErrors] = useState<Partial<CustomerFormData & { general: string }>>({})
+  const [errors, setErrors] = useState<Partial<Record<keyof CustomerFormData | 'general', string>>>({})
 
   const bd = rateType === 'FLEXIBLE' ? flexibleBreakdown : nonRefundableBreakdown
   const nights = differenceInDays(checkOut, checkIn)
@@ -167,7 +167,7 @@ export const BookingCheckoutSection: React.FC<Props> = ({
               </Field>
             </div>
 
-            <Field label="Menores de edad incluidos" error={errors.menores as string}>
+            <Field label="Menores de edad incluidos" error={errors.menores}>
               <div className="flex items-center gap-3">
                 <button
                   type="button"
@@ -376,7 +376,7 @@ export const BookingCheckoutSection: React.FC<Props> = ({
               {rateType === 'FLEXIBLE' ? (
                 <>
                   <div className="flex justify-between items-center">
-                    <span className="text-stone-500">Señal ahora (30%)</span>
+                    <span className="text-stone-500">Señal ahora ({Math.round(bd.depositRequired / bd.total * 100)}%)</span>
                     <span className="font-bold text-emerald-700">{bd.depositRequired.toFixed(2)}€</span>
                   </div>
                   <div className="flex justify-between items-center">

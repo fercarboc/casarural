@@ -6,6 +6,7 @@ import { HomePage } from './public/pages/HomePage';
 import { LaCasaPage } from './public/pages/LaCasaPage';
 import { GaleriaPage } from './public/pages/GaleriaPage';
 import { ServiciosPage } from './public/pages/ServiciosPage';
+import { ActividadesPage } from './public/pages/ActividadesPage';
 import { ContactoPage } from './public/pages/ContactoPage';
 import { SoportePage } from './public/pages/SoportePage';
 import { DondeEstamosPage } from './public/pages/DondeEstamosPage';
@@ -36,6 +37,8 @@ import { ICalPage } from './admin/pages/ICalPage';
 
 import { ReservationViewPage } from './public/pages/ReservationViewPage';
 import ReservaConfirmada from './public/pages/ReservaConfirmada';
+import { CancelarReserva } from './public/pages/CancelarReserva';
+import { CambioFechas } from './public/pages/CambioFechas';
 import { isMockMode } from './integrations/supabase/client';
 import { SupabaseSetup } from './components/SupabaseSetup';
 
@@ -49,6 +52,7 @@ const PublicLayout = ({ children }: { children: React.ReactNode }) => (
           <Link to="/la-casa" className="text-sm font-medium hover:text-emerald-700 transition-colors">La Casa</Link>
           <Link to="/galeria" className="text-sm font-medium hover:text-emerald-700 transition-colors">Galería</Link>
           <Link to="/servicios" className="text-sm font-medium hover:text-emerald-700 transition-colors">Servicios</Link>
+          <Link to="/actividades" className="text-sm font-medium hover:text-emerald-700 transition-colors">Actividades</Link>
           <Link to="/donde-estamos" className="text-sm font-medium hover:text-emerald-700 transition-colors">Dónde estamos</Link>
           <Link to="/contacto" className="text-sm font-medium hover:text-emerald-700 transition-colors">Contacto</Link>
         </div>
@@ -77,10 +81,13 @@ export default function App() {
           <Route path="/la-casa" element={<PublicLayout><LaCasaPage /></PublicLayout>} />
           <Route path="/galeria" element={<PublicLayout><GaleriaPage /></PublicLayout>} />
           <Route path="/servicios" element={<PublicLayout><ServiciosPage /></PublicLayout>} />
+          <Route path="/actividades" element={<PublicLayout><ActividadesPage /></PublicLayout>} />
           <Route path="/donde-estamos" element={<PublicLayout><DondeEstamosPage /></PublicLayout>} />
           <Route path="/contacto" element={<PublicLayout><ContactoPage /></PublicLayout>} />
           <Route path="/reservar" element={<PublicLayout><BookingPage /></PublicLayout>} />
           <Route path="/reserva/confirmada" element={<ReservaConfirmada />} />
+          <Route path="/reserva/cancelar" element={<PublicLayout><CancelarReserva /></PublicLayout>} />
+          <Route path="/reserva/cambio" element={<PublicLayout><CambioFechas /></PublicLayout>} />
           <Route path="/reserva/:token" element={<PublicLayout><ReservationViewPage /></PublicLayout>} />
           
           {/* Legal Routes */}

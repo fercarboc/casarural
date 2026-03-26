@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import {
   Search, Download, Mail, Phone, Calendar, Euro, X, ChevronRight,
   Users, FileText, MessageSquare, CheckCircle2, Clock, AlertCircle,
-  Loader2, BookOpen, User, ExternalLink, RefreshCw
+  Loader2, BookOpen, User, ExternalLink, RefreshCw, Pencil, Trash2
 } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -307,12 +307,112 @@ function ContactDetail({ contacto: c, onClose, onRefresh }: {
   onRefresh: () => void
 }) {
   const [tab, setTab] = useState<'info' | 'reservas' | 'consultas'>('info')
+  const [editOpen, setEditOpen] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState(false)
+  const [editNombre, setEditNombre] = useState(c.nombre)
+  const [editTelefono, setEditTelefono] = useState(c.telefono ?? '')
+  const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
   const reservasActivas = c.reservas.filter(r => r.estado !== 'CANCELLED' && r.estado !== 'EXPIRED')
   const totalGastado = reservasActivas.reduce((s, r) => s + Number(r.total), 0)
   const totalPagado  = reservasActivas.reduce((s, r) => s + Number(r.importe_pagado), 0)
 
+  const handleSaveEdit = async () => {
+    const trimmed = editNombre.trim()
+    if (!trimmed) return
+    setSaving(true)
+    const parts = trimmed.split(/\s+/)
+    const nombre    = parts[0]
+    const apellidos = parts.slice(1).join(' ')
+    const tel = editTelefono.trim() || null
+    await Promise.all([
+      supabase.from('reservas').update({ nombre, apellidos, telefono: tel }).eq('email', c.email),
+      supabase.from('consultas').update({ nombre: trimmed, telefono: tel }).eq('email', c.email),
+    ])
+    setSaving(false)
+    setEditOpen(false)
+    onRefresh()
+  }
+
+  const handleDelete = async () => {
+    setDeleting(true)
+    await Promise.all([
+      supabase.from('reservas').delete().eq('email', c.email),
+      supabase.from('consultas').delete().eq('email', c.email),
+    ])
+    setDeleting(false)
+    onClose()
+    onRefresh()
+  }
+
   return (
-    <div className="flex-1 flex flex-col border-l border-zinc-200 bg-white overflow-hidden">
+    <div className="relative flex-1 flex flex-col border-l border-zinc-200 bg-white overflow-hidden">
+
+      {/* Modal editar */}
+      {editOpen && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-2xl shadow-2xl w-96 p-6">
+            <h3 className="font-bold text-zinc-900 mb-4">Editar cliente</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-zinc-500 mb-1">Nombre completo</label>
+                <input
+                  value={editNombre}
+                  onChange={e => setEditNombre(e.target.value)}
+                  className="w-full border border-zinc-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-zinc-500 mb-1">Teléfono</label>
+                <input
+                  value={editTelefono}
+                  onChange={e => setEditTelefono(e.target.value)}
+                  className="w-full border border-zinc-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                />
+              </div>
+              <p className="text-[11px] text-zinc-400">Se actualizará en todas las reservas y consultas de este email.</p>
+            </div>
+            <div className="flex gap-2 mt-5">
+              <button
+                onClick={() => setEditOpen(false)}
+                className="flex-1 py-2 rounded-xl border border-zinc-200 text-sm text-zinc-600 hover:bg-zinc-50 transition-colors"
+              >Cancelar</button>
+              <button
+                onClick={handleSaveEdit}
+                disabled={saving}
+                className="flex-1 py-2 rounded-xl bg-zinc-900 text-white text-sm hover:bg-zinc-700 transition-colors disabled:opacity-50"
+              >{saving ? 'Guardando…' : 'Guardar'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal confirmar borrado */}
+      {deleteConfirm && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-2xl shadow-2xl w-96 p-6">
+            <h3 className="font-bold text-zinc-900 mb-2">¿Borrar cliente?</h3>
+            <p className="text-sm text-zinc-500 mb-1">
+              Se eliminarán <strong>todas las reservas y consultas</strong> asociadas al email:
+            </p>
+            <p className="text-sm font-semibold text-zinc-800 mb-4">{c.email}</p>
+            <p className="text-xs text-red-500 mb-5">Esta acción no se puede deshacer.</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setDeleteConfirm(false)}
+                className="flex-1 py-2 rounded-xl border border-zinc-200 text-sm text-zinc-600 hover:bg-zinc-50 transition-colors"
+              >Cancelar</button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex-1 py-2 rounded-xl bg-red-600 text-white text-sm hover:bg-red-700 transition-colors disabled:opacity-50"
+              >{deleting ? 'Borrando…' : 'Sí, borrar'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="px-6 py-4 border-b border-zinc-200 flex items-start justify-between">
         <div className="flex items-center gap-3">
@@ -326,9 +426,25 @@ function ContactDetail({ contacto: c, onClose, onRefresh }: {
             <p className="text-xs text-zinc-400">{c.email}</p>
           </div>
         </div>
-        <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-zinc-100 text-zinc-400">
-          <X size={18} />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => { setEditNombre(c.nombre); setEditTelefono(c.telefono ?? ''); setEditOpen(true) }}
+            className="p-1.5 rounded-lg hover:bg-zinc-100 text-zinc-400 hover:text-zinc-700 transition-colors"
+            title="Editar cliente"
+          >
+            <Pencil size={16} />
+          </button>
+          <button
+            onClick={() => setDeleteConfirm(true)}
+            className="p-1.5 rounded-lg hover:bg-red-50 text-zinc-400 hover:text-red-600 transition-colors"
+            title="Borrar cliente"
+          >
+            <Trash2 size={16} />
+          </button>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-zinc-100 text-zinc-400">
+            <X size={18} />
+          </button>
+        </div>
       </div>
 
       {/* KPIs rápidos */}

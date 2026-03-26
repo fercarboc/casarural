@@ -4,6 +4,7 @@ import { addDays, format, isBefore, isSameDay, differenceInDays, parseISO } from
 import { isMockMode, supabase } from '../integrations/supabase/client';
 import { createMockReservation, getMockReservations, updateMockReservation, deleteMockReservation } from './booking.mock';
 import { calendarService } from './calendar.service';
+import { PricingConfig } from './config.service';
 
 /** Mapea una fila de Supabase al tipo Reservation del frontend */
 function mapReserva(r: any): Reservation {
@@ -23,6 +24,39 @@ function mapReserva(r: any): Reservation {
     customer_phone: r.telefono,
     stripe_session_id: r.stripe_session_id,
   };
+}
+
+export interface ReservaPublica {
+  id: string
+  codigo: string
+  nombre: string
+  apellidos: string
+  email: string
+  telefono: string
+  fecha_entrada: string
+  fecha_salida: string
+  noches: number
+  num_huespedes: number
+  tarifa: 'FLEXIBLE' | 'NO_REEMBOLSABLE'
+  temporada: 'ALTA' | 'BASE'
+  total: number
+  importe_senal: number | null
+  importe_pagado: number
+  estado: string
+  estado_pago: string
+  token_cliente: string
+  solicitud_cambio: string | null
+}
+
+export async function getReservaByToken(token: string): Promise<ReservaPublica | null> {
+  const { data, error } = await supabase
+    .from('reservas')
+    .select('id, codigo, nombre, apellidos, email, telefono, fecha_entrada, fecha_salida, noches, num_huespedes, tarifa, temporada, total, importe_senal, importe_pagado, estado, estado_pago, token_cliente, solicitud_cambio')
+    .eq('token_cliente', token)
+    .single()
+
+  if (error || !data) return null
+  return data as ReservaPublica
 }
 
 export const bookingService = {
@@ -118,36 +152,24 @@ export const bookingService = {
     return days;
   },
 
-  calculatePrice(checkIn: Date, checkOut: Date, guests: number, rateType: RateType): PriceBreakdown {
+  calculatePrice(checkIn: Date, checkOut: Date, guests: number, rateType: RateType, cfg?: PricingConfig | null): PriceBreakdown {
     const nights = Math.max(0, differenceInDays(checkOut, checkIn));
     const isHighSeason = checkIn.getMonth() === 6 || checkIn.getMonth() === 7;
-    const nightlyPrice = isHighSeason ? 300 : 275;
-    const extraGuestFeePerNight = isHighSeason ? 30 : 27.5;
+    const nightlyPrice          = isHighSeason ? (cfg?.precio_noche_alta   ?? 300) : (cfg?.precio_noche_base   ?? 275);
+    const extraGuestFeePerNight = isHighSeason ? (cfg?.extra_huesped_alta  ?? 30)  : (cfg?.extra_huesped_base  ?? 27.5);
+    const cleaningFee           = cfg?.limpieza                    ?? 50;
+    const discountPct           = (cfg?.descuento_no_reembolsable  ?? 10) / 100;
+    const depositPct            = (cfg?.porcentaje_senal           ?? 30) / 100;
 
     const accommodationTotal = nightlyPrice * nights;
-    const extraGuestsCount = guests === 11 ? 1 : 0;
-    const extraGuestsTotal = extraGuestsCount * extraGuestFeePerNight * nights;
-    const cleaningFee = 50;
+    const extraGuestsCount   = guests === 11 ? 1 : 0;
+    const extraGuestsTotal   = extraGuestsCount * extraGuestFeePerNight * nights;
 
-    let discount = 0;
-    if (rateType === 'NON_REFUNDABLE') {
-      discount = accommodationTotal * 0.1;
-    }
+    const discount = rateType === 'NON_REFUNDABLE' ? accommodationTotal * discountPct : 0;
+    const total    = accommodationTotal + extraGuestsTotal + cleaningFee - discount;
+    const depositRequired = rateType === 'FLEXIBLE' ? total * depositPct : total;
 
-    const total = accommodationTotal + extraGuestsTotal + cleaningFee - discount;
-    const depositRequired = rateType === 'FLEXIBLE' ? total * 0.3 : total;
-
-    return {
-      nights,
-      nightlyPrice,
-      accommodationTotal,
-      extraGuestFee: extraGuestFeePerNight,
-      extraGuestsTotal,
-      cleaningFee,
-      discount,
-      total,
-      depositRequired,
-    };
+    return { nights, nightlyPrice, accommodationTotal, extraGuestFee: extraGuestFeePerNight, extraGuestsTotal, cleaningFee, discount, total, depositRequired };
   },
 
   async createReservation(request: BookingRequest): Promise<{ id: string; token: string; stripeUrl: string }> {
