@@ -1,6 +1,7 @@
 import React from 'react';
 import { Routes, Route, Link } from 'react-router-dom';
 import { AnimatePresence } from 'motion/react';
+import { Analytics } from '@vercel/analytics/react';
 import BookingPage from './public/pages/BookingPage';
 import { HomePage } from './public/pages/HomePage';
 import { LaCasaPage } from './public/pages/LaCasaPage';
@@ -74,6 +75,7 @@ export default function App() {
   
   return (
     <AuthProvider>
+      <Analytics />
       <AnimatePresence mode="wait">
         <Routes>
           {/* Public Routes */}
