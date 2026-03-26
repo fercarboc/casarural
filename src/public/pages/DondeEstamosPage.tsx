@@ -2,7 +2,7 @@ import React from 'react';
 import { HeroSection } from '../components/HeroSection';
 import { SectionContainer } from '../components/SectionContainer';
 import { CTASection } from '../components/CTASection';
-import { MapPin, Car, Plane, Train, Trees, Compass, Mountain, Map as MapIcon } from 'lucide-react';
+import { Car, Plane, Train, Trees, Compass, Mountain, Map as MapIcon } from 'lucide-react';
 import { MetaTags } from '../components/MetaTags';
 
 export const DondeEstamosPage: React.FC = () => {
@@ -71,44 +71,6 @@ export const DondeEstamosPage: React.FC = () => {
             <div className="absolute -bottom-6 -left-6 bg-white p-6 rounded-2xl shadow-xl border border-stone-100 max-w-xs">
               <p className="text-sm font-medium text-stone-800 italic">"Un lugar donde el único ruido es el de los pájaros y el viento entre los árboles."</p>
             </div>
-          </div>
-        </div>
-      </SectionContainer>
-
-      {/* Qué ver cerca */}
-      <SectionContainer bg="stone">
-        <h2 className="text-3xl font-serif font-bold text-stone-800 text-center mb-4">Qué hacer cerca de La Rasilla</h2>
-        <p className="text-center text-stone-500 mb-12 max-w-2xl mx-auto">Todo lo que necesitas para una escapada perfecta está a pocos minutos.</p>
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          <div className="bg-white p-8 rounded-2xl shadow-sm border border-stone-100">
-            <div className="text-3xl mb-3">🦣</div>
-            <h3 className="text-lg font-bold text-stone-800 mb-2">Cuevas del Castillo — 10 min</h3>
-            <p className="text-stone-600 text-sm">Arte rupestre paleolítico Patrimonio de la Humanidad en Puente Viesgo. Una visita imprescindible.</p>
-          </div>
-          <div className="bg-white p-8 rounded-2xl shadow-sm border border-stone-100">
-            <div className="text-3xl mb-3">🍷</div>
-            <h3 className="text-lg font-bold text-stone-800 mb-2">Bodegas Seldaiz — 1 km</h3>
-            <p className="text-stone-600 text-sm">A un kilómetro de la casa. Visitas guiadas y cata de vinos en un entorno de viñedos.</p>
-          </div>
-          <div className="bg-white p-8 rounded-2xl shadow-sm border border-stone-100">
-            <div className="text-3xl mb-3">💧</div>
-            <h3 className="text-lg font-bold text-stone-800 mb-2">El Churrón de Borleña</h3>
-            <p className="text-stone-600 text-sm">Espectacular cascada natural en el Valle de Toranzo. Una ruta sencilla y muy recomendable.</p>
-          </div>
-          <div className="bg-white p-8 rounded-2xl shadow-sm border border-stone-100">
-            <div className="text-3xl mb-3">🏊</div>
-            <h3 className="text-lg font-bold text-stone-800 mb-2">Balneario de Puente Viesgo — 10 min</h3>
-            <p className="text-stone-600 text-sm">Aguas termales y spa en el famoso Gran Hotel Balneario de Puente Viesgo, a 10 minutos.</p>
-          </div>
-          <div className="bg-white p-8 rounded-2xl shadow-sm border border-stone-100">
-            <div className="text-3xl mb-3">🥾</div>
-            <h3 className="text-lg font-bold text-stone-800 mb-2">Rutas de montaña</h3>
-            <p className="text-stone-600 text-sm">El Valle de Toranzo ofrece rutas para todos los niveles entre praderas, bosques de roble y hayedo.</p>
-          </div>
-          <div className="bg-white p-8 rounded-2xl shadow-sm border border-stone-100">
-            <div className="text-3xl mb-3">🐄</div>
-            <h3 className="text-lg font-bold text-stone-800 mb-2">Gastronomía pasiega</h3>
-            <p className="text-stone-600 text-sm">Sobaos, quesadas y cocido montañés. La gastronomía pasiega es uno de los mayores atractivos de la zona.</p>
           </div>
         </div>
       </SectionContainer>
