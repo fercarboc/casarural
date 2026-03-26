@@ -361,7 +361,7 @@ export default function ReservaConfirmada() {
               <div style={styles.infoRow}>
                 <span style={{ ...styles.infoLabel, color: 'rgba(245,240,232,0.6)' }}>Dirección</span>
                 <span style={{ ...styles.infoValue, color: 'var(--crema)' }}>
-                  Castillo Pedroso, Valles Pasiegos, Cantabria
+                  C/ Las Varas, s/n · 39699 · Castillo Pedroso · Cantabria
                 </span>
               </div>
               <div style={styles.infoRow}>

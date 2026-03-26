@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
-import { Users, Home, Trees, ShieldCheck, Calendar, ArrowRight } from 'lucide-react';
+import { Users, Home, Trees, ShieldCheck, ArrowRight } from 'lucide-react';
 import { MetaTags, defaultSchema } from '../components/MetaTags';
 
 export const HomePage: React.FC = () => {
@@ -132,6 +132,16 @@ export const HomePage: React.FC = () => {
             <img
               src="/images/pueblo1.jpg"
               alt="Castillo Pedroso, Valle de Toranzo, Cantabria"
+              className="mt-12 rounded-2xl shadow-2xl transform hover:-translate-y-2 transition-transform duration-500"
+            />
+            <img
+              src="/images/porche2.jpg"
+              alt="Porche y jardín de La Rasilla, casa rural Cantabria"
+              className="rounded-2xl shadow-2xl transform hover:-translate-y-2 transition-transform duration-500"
+            />
+            <img
+              src="/images/pueblo2.jpg"
+              alt="Vistas de Castillo Pedroso, Valles Pasiegos"
               className="mt-12 rounded-2xl shadow-2xl transform hover:-translate-y-2 transition-transform duration-500"
             />
           </div>

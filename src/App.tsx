@@ -11,14 +11,12 @@ import { ContactoPage } from './public/pages/ContactoPage';
 import { SoportePage } from './public/pages/SoportePage';
 import { DondeEstamosPage } from './public/pages/DondeEstamosPage';
 import { Footer } from './public/components/Footer';
-import { 
-  AvisoLegal, 
-  PoliticaPrivacidad, 
-  PoliticaCookies, 
-  RGPD, 
-  CondicionesReserva, 
-  PoliticaCancelaciones 
-} from './public/pages/LegalPages';
+import { RGPD, PoliticaCancelaciones } from './public/pages/LegalPages';
+import { AvisoLegal }   from './public/pages/AvisoLegal';
+import { Privacidad }   from './public/pages/Privacidad';
+import { Cookies }      from './public/pages/Cookies';
+import { Ayuda }        from './public/pages/Ayuda';
+import { Condiciones }  from './public/pages/Condiciones';
 
 // Admin Imports
 import { AuthProvider } from './admin/context/AuthContext';
@@ -41,6 +39,9 @@ import { CancelarReserva } from './public/pages/CancelarReserva';
 import { CambioFechas } from './public/pages/CambioFechas';
 import { isMockMode } from './integrations/supabase/client';
 import { SupabaseSetup } from './components/SupabaseSetup';
+import { useCookieConsent, CookieConsentContext } from './shared/hooks/useCookieConsent';
+import { CookieBanner } from './shared/components/CookieBanner';
+import { Analytics } from '@vercel/analytics/react';
 
 // Layouts
 const PublicLayout = ({ children }: { children: React.ReactNode }) => (
@@ -67,12 +68,10 @@ const PublicLayout = ({ children }: { children: React.ReactNode }) => (
 );
 
 export default function App() {
-  // Only show setup if not configured AND NOT in mock mode (but here isMockMode means not configured)
-  // Actually, the user wants mock mode to be the default if no variables.
-  // So we only show SupabaseSetup if the user explicitly wants to configure it?
-  // Let's just remove the SupabaseSetup for now as per "No quiero pantallas vacías / No quiero errores".
-  
+  const cookieConsent = useCookieConsent()
+
   return (
+    <CookieConsentContext.Provider value={cookieConsent}>
     <AuthProvider>
       <AnimatePresence mode="wait">
         <Routes>
@@ -91,11 +90,12 @@ export default function App() {
           <Route path="/reserva/:token" element={<PublicLayout><ReservationViewPage /></PublicLayout>} />
           
           {/* Legal Routes */}
-          <Route path="/aviso-legal" element={<PublicLayout><AvisoLegal /></PublicLayout>} />
-          <Route path="/politica-privacidad" element={<PublicLayout><PoliticaPrivacidad /></PublicLayout>} />
-          <Route path="/politica-cookies" element={<PublicLayout><PoliticaCookies /></PublicLayout>} />
-          <Route path="/rgpd" element={<PublicLayout><RGPD /></PublicLayout>} />
-          <Route path="/condiciones-reserva" element={<PublicLayout><CondicionesReserva /></PublicLayout>} />
+          <Route path="/aviso-legal"  element={<PublicLayout><AvisoLegal /></PublicLayout>} />
+          <Route path="/privacidad"   element={<PublicLayout><Privacidad /></PublicLayout>} />
+          <Route path="/cookies"      element={<PublicLayout><Cookies /></PublicLayout>} />
+          <Route path="/ayuda"        element={<PublicLayout><Ayuda /></PublicLayout>} />
+          <Route path="/condiciones"  element={<PublicLayout><Condiciones /></PublicLayout>} />
+          <Route path="/rgpd"                   element={<PublicLayout><RGPD /></PublicLayout>} />
           <Route path="/politica-cancelaciones" element={<PublicLayout><PoliticaCancelaciones /></PublicLayout>} />
           <Route path="/soporte" element={<PublicLayout><SoportePage /></PublicLayout>} />
           
@@ -117,6 +117,9 @@ export default function App() {
           </Route>
         </Routes>
       </AnimatePresence>
+      <CookieBanner />
+      <Analytics />
     </AuthProvider>
+    </CookieConsentContext.Provider>
   );
 }

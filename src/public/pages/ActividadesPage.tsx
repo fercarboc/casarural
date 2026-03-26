@@ -279,6 +279,14 @@ const ACTIVIDADES: Actividad[] = [
     tiempo: '0 min',
     imagen: '/images/senderismo_vallespaisegos.jpg',
   },
+  {
+    categoria: 'relax',
+    titulo: 'Golf de Pedreña',
+    descripcion: 'El club de golf más legendario de España, cuna de Seve Ballesteros. Hoyo a hoyo con vistas a la bahía de Santander y las montañas de Cantabria. Una jornada memorable para los aficionados al golf.',
+    distancia: 'Pedreña, Santander',
+    tiempo: '40 min',
+    imagen: '/images/golfpedrena.jpg',
+  },
 ];
 
 // ─── Config categorías ────────────────────────────────────────────────────────

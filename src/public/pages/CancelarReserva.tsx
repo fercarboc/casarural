@@ -1,60 +1,71 @@
+
 import React, { useEffect, useState } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
-import { supabase } from '../../integrations/supabase/client'
 import { getReservaByToken, ReservaPublica } from '../../services/booking.service'
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+ 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 function formatDate(dateStr: string) {
   return new Date(dateStr + 'T12:00:00').toLocaleDateString('es-ES', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   })
 }
-
+ 
 function formatEur(n: number) {
   return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(n)
 }
-
+ 
 function calcularReembolso(reserva: ReservaPublica) {
   if (reserva.tarifa === 'NO_REEMBOLSABLE') {
-    return { diasRestantes: 0, porcentajeReembolso: 0, importeReembolso: 0, descripcion: 'Tarifa no reembolsable — sin reembolso' }
+    return {
+      diasRestantes: 0,
+      porcentajeReembolso: 0,
+      importeReembolso: 0,
+      descripcion: 'Tarifa no reembolsable — sin reembolso',
+    }
   }
   const hoy = new Date()
   hoy.setHours(0, 0, 0, 0)
   const entrada = new Date(reserva.fecha_entrada + 'T00:00:00')
   const dias = Math.floor((entrada.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24))
-
+ 
   let pct = 0
   let descripcion = ''
-  if (dias >= 60) { pct = 100; descripcion = 'Reembolso completo (más de 60 días)' }
-  else if (dias >= 45) { pct = 50; descripcion = 'Reembolso del 50% (entre 45 y 59 días)' }
-  else if (dias >= 30) { pct = 25; descripcion = 'Reembolso del 25% (entre 30 y 44 días)' }
-  else { pct = 0; descripcion = 'Sin reembolso (menos de 30 días)' }
-
+  if (dias >= 60)      { pct = 100; descripcion = 'Reembolso completo (más de 60 días)' }
+  else if (dias >= 45) { pct = 50;  descripcion = 'Reembolso del 50% (entre 45 y 59 días)' }
+  else if (dias >= 30) { pct = 25;  descripcion = 'Reembolso del 25% (entre 30 y 44 días)' }
+  else                 { pct = 0;   descripcion = 'Sin reembolso (menos de 30 días)' }
+ 
   const importeReembolso = Math.round((reserva.importe_pagado * pct / 100) * 100) / 100
-
   return { diasRestantes: dias, porcentajeReembolso: pct, importeReembolso, descripcion }
 }
-
+ 
 function reembolsoColor(pct: number): string {
   if (pct === 100) return '#2D7D5A'
-  if (pct === 50) return '#1565C0'
-  if (pct === 25) return '#E65100'
+  if (pct === 50)  return '#1565C0'
+  if (pct === 25)  return '#E65100'
   return '#C62828'
 }
-
-// ─── Componente principal ────────────────────────────────────────────────────
-type Screen = 'loading' | 'error' | 'inactive' | 'form' | 'sent'
-
+ 
+// ─── Componente principal ─────────────────────────────────────────────────────
+type Screen = 'loading' | 'error' | 'inactive' | 'form' | 'cancelled'
+ 
 export function CancelarReserva() {
-  const [searchParams] = useSearchParams()
-  const token = searchParams.get('token') ?? ''
-
-  const [screen, setScreen] = useState<Screen>('loading')
-  const [reserva, setReserva] = useState<ReservaPublica | null>(null)
-  const [motivo, setMotivo] = useState('')
-  const [sending, setSending] = useState(false)
+  const [searchParams]  = useSearchParams()
+  const token           = searchParams.get('token') ?? ''
+ 
+  const [screen,    setScreen]    = useState<Screen>('loading')
+  const [reserva,   setReserva]   = useState<ReservaPublica | null>(null)
+  const [motivo,    setMotivo]    = useState('')
+  const [sending,   setSending]   = useState(false)
   const [sendError, setSendError] = useState<string | null>(null)
-
+ 
+  // Resultado de la cancelación (devuelto por la Edge Function)
+  const [resultado, setResultado] = useState<{
+    importe_reembolso: number
+    politica_aplicada: string
+    mensaje: string
+  } | null>(null)
+ 
   useEffect(() => {
     if (!token) { setScreen('error'); return }
     getReservaByToken(token).then(res => {
@@ -63,59 +74,53 @@ export function CancelarReserva() {
       setScreen(res.estado === 'CONFIRMED' ? 'form' : 'inactive')
     })
   }, [token])
-
-  const handleSubmit = async () => {
+ 
+  // ── Acción: cancelar reserva real ─────────────────────────────────────────
+  const handleCancelar = async () => {
     if (!reserva) return
     setSending(true)
     setSendError(null)
+ 
     try {
-      const { porcentajeReembolso, importeReembolso } = calcularReembolso(reserva)
-
-      const { error } = await supabase.from('consultas').insert({
-        nombre: `${reserva.nombre} ${reserva.apellidos}`,
-        email: reserva.email,
-        telefono: reserva.telefono,
-        asunto: `Solicitud de cancelación — ${reserva.codigo}`,
-        mensaje:
-          `Solicitud de cancelación para reserva ${reserva.codigo}.\n` +
-          `Entrada: ${reserva.fecha_entrada}\n` +
-          `Salida: ${reserva.fecha_salida}\n` +
-          `Total: ${reserva.total}€\n` +
-          `Reembolso estimado: ${importeReembolso}€ (${porcentajeReembolso}%)\n\n` +
-          `Motivo del cliente: ${motivo.trim() || 'No indicado'}`,
-        reserva_id: reserva.id,
-        estado: 'NUEVA',
-      })
-
-      if (error) throw error
-
-      const SUPABASE_URL = (import.meta as any).env.VITE_SUPABASE_URL as string
+      const SUPABASE_URL     = (import.meta as any).env.VITE_SUPABASE_URL as string
       const SUPABASE_ANON_KEY = (import.meta as any).env.VITE_SUPABASE_ANON_KEY as string
-
-      await fetch(`${SUPABASE_URL}/functions/v1/send-email`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
+ 
+      // Llamar a cancel-reservation con el token del cliente
+      // La Edge Function hace TODO: cancela reserva, reembolso Stripe,
+      // registra retención, audit log y envía emails
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/cancel-reservation`, {
+        method:  'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey':        SUPABASE_ANON_KEY,
+        },
         body: JSON.stringify({
-          template_key: 'cancel_request_received',
-          to_email: reserva.email,
-          to_name: `${reserva.nombre} ${reserva.apellidos}`,
-          reservation_id: reserva.id,
-          extra_vars: {
-            cancellation_policy: calcularReembolso(reserva).descripcion,
-            reembolso_estimado: `${importeReembolso} €`,
-          },
+          token,
+          reason: motivo.trim() || undefined,
         }),
-      }).catch(() => { /* email best-effort */ })
-
-      setScreen('sent')
+      })
+ 
+      const data = await res.json()
+ 
+      if (!res.ok || !data.success) {
+        throw new Error(data.error ?? 'Error al cancelar la reserva')
+      }
+ 
+      setResultado({
+        importe_reembolso: data.importe_reembolso ?? 0,
+        politica_aplicada: data.politica_aplicada ?? '',
+        mensaje:           data.mensaje ?? '',
+      })
+      setScreen('cancelled')
+ 
     } catch (e: any) {
-      setSendError('Error al enviar la solicitud. Por favor inténtalo de nuevo.')
+      setSendError(e.message ?? 'Error al cancelar. Por favor inténtalo de nuevo o contáctanos.')
     } finally {
       setSending(false)
     }
   }
-
-  // ── Loading ────────────────────────────────────────────────────────────────
+ 
+  // ── Loading ───────────────────────────────────────────────────────────────
   if (screen === 'loading') {
     return (
       <>
@@ -127,8 +132,8 @@ export function CancelarReserva() {
       </>
     )
   }
-
-  // ── Error ──────────────────────────────────────────────────────────────────
+ 
+  // ── Error ─────────────────────────────────────────────────────────────────
   if (screen === 'error') {
     return (
       <>
@@ -148,8 +153,8 @@ export function CancelarReserva() {
       </>
     )
   }
-
-  // ── Reserva no activa ──────────────────────────────────────────────────────
+ 
+  // ── Reserva no activa ─────────────────────────────────────────────────────
   if (screen === 'inactive' && reserva) {
     return (
       <>
@@ -164,9 +169,10 @@ export function CancelarReserva() {
       </>
     )
   }
-
-  // ── Confirmación enviada ──────────────────────────────────────────────────
-  if (screen === 'sent' && reserva) {
+ 
+  // ── Cancelación confirmada ────────────────────────────────────────────────
+  if (screen === 'cancelled' && reserva && resultado) {
+    const tieneReembolso = resultado.importe_reembolso > 0
     return (
       <>
         <GlobalStyles />
@@ -176,11 +182,45 @@ export function CancelarReserva() {
               <path d="M5 13l4 4L19 7" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </div>
-          <h2 style={s.titleSm}>Solicitud enviada correctamente</h2>
+          <h2 style={s.titleSm}>Reserva cancelada</h2>
           <p style={s.subtitleSm}>
-            Hemos recibido tu solicitud de cancelación para la reserva{' '}
-            <strong style={{ color: '#2D4A3E' }}>{reserva.codigo}</strong>.<br />
-            Te responderemos en un plazo máximo de 24–48 horas en tu email:{' '}
+            Tu reserva <strong style={{ color: '#2D4A3E' }}>{reserva.codigo}</strong> ha sido cancelada.<br />
+            Esperamos que puedas visitarnos en otra ocasión.
+          </p>
+ 
+          {/* Bloque de reembolso */}
+          <div style={{
+            ...s.reembolsoConfirmBox,
+            borderColor: tieneReembolso ? '#2D7D5A40' : '#E6510040',
+            background:  tieneReembolso ? '#F0F7F0'   : '#FFF3E0',
+          }}>
+            {tieneReembolso ? (
+              <>
+                <p style={{ fontSize: 13, color: '#2D7D5A', margin: '0 0 6px', fontWeight: 600 }}>
+                  Reembolso en curso
+                </p>
+                <p style={{ fontSize: 22, fontWeight: 700, color: '#2D4A3E', margin: '0 0 6px', fontFamily: "'Cormorant Garamond', serif" }}>
+                  {formatEur(resultado.importe_reembolso)}
+                </p>
+                <p style={{ fontSize: 13, color: '#555', margin: 0, lineHeight: 1.6 }}>
+                  {resultado.politica_aplicada}<br />
+                  Se procesará en <strong>5–10 días hábiles</strong> en tu método de pago original.
+                </p>
+              </>
+            ) : (
+              <>
+                <p style={{ fontSize: 13, color: '#E65100', margin: '0 0 6px', fontWeight: 600 }}>
+                  Sin reembolso aplicable
+                </p>
+                <p style={{ fontSize: 13, color: '#555', margin: 0, lineHeight: 1.6 }}>
+                  {resultado.politica_aplicada}
+                </p>
+              </>
+            )}
+          </div>
+ 
+          <p style={{ ...s.subtitleSm, fontSize: 13 }}>
+            Te hemos enviado un email de confirmación a{' '}
             <strong style={{ color: '#2D4A3E' }}>{reserva.email}</strong>
           </p>
           <Link to="/" style={s.btnPrimary}>Volver al inicio</Link>
@@ -188,38 +228,38 @@ export function CancelarReserva() {
       </>
     )
   }
-
+ 
   // ── Formulario principal ──────────────────────────────────────────────────
   if (!reserva) return null
   const politica = calcularReembolso(reserva)
-  const color = reembolsoColor(politica.porcentajeReembolso)
-
+  const color    = reembolsoColor(politica.porcentajeReembolso)
+ 
   return (
     <>
       <GlobalStyles />
       <div style={s.page}>
         <div style={s.container}>
-
+ 
           {/* Encabezado */}
           <div style={s.heading} className="cr-fade">
             <p style={s.headingLabel}>La Rasilla</p>
-            <h1 style={s.headingTitle}>Solicitud de cancelación</h1>
+            <h1 style={s.headingTitle}>Cancelar reserva</h1>
             <p style={s.headingSubtitle}>
-              Revisa los datos de tu reserva y la política de cancelación antes de continuar.
+              Revisa los datos y la política de cancelación antes de confirmar.
             </p>
           </div>
-
+ 
           {/* Ficha de reserva */}
           <section style={s.card} className="cr-fade">
             <h2 style={s.cardTitle}>Tu reserva</h2>
-            <Row label="Código" value={reserva.codigo} />
-            <Row label="Entrada" value={formatDate(reserva.fecha_entrada)} />
-            <Row label="Salida" value={formatDate(reserva.fecha_salida)} />
-            <Row label="Noches" value={`${reserva.noches}`} />
+            <Row label="Código"    value={reserva.codigo} />
+            <Row label="Entrada"   value={formatDate(reserva.fecha_entrada)} />
+            <Row label="Salida"    value={formatDate(reserva.fecha_salida)} />
+            <Row label="Noches"    value={`${reserva.noches}`} />
             <Row label="Huéspedes" value={`${reserva.num_huespedes}`} />
-            <Row label="Total" value={formatEur(reserva.total)} strong />
+            <Row label="Total"     value={formatEur(reserva.total)} strong />
           </section>
-
+ 
           {/* Política de cancelación */}
           <section style={s.card} className="cr-fade">
             <h2 style={s.cardTitle}>
@@ -228,20 +268,18 @@ export function CancelarReserva() {
                 Tarifa: {reserva.tarifa === 'FLEXIBLE' ? 'Flexible' : 'No reembolsable'}
               </span>
             </h2>
-
+ 
             <div style={{ ...s.policyBox, borderColor: color + '40', background: color + '08' }}>
               <p style={{ ...s.policyDias, color }}>
                 Días hasta tu llegada: <strong>{Math.max(0, politica.diasRestantes)} días</strong>
               </p>
               <div style={s.policyDivider} />
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                <span style={{ ...s.policyBadge, background: color, color: 'white' }}>
-                  {politica.porcentajeReembolso}% de reembolso
-                </span>
-              </div>
+              <span style={{ ...s.policyBadge, background: color, color: 'white' }}>
+                {politica.porcentajeReembolso}% de reembolso
+              </span>
               <p style={{ ...s.policyDesc, color }}>{politica.descripcion}</p>
             </div>
-
+ 
             <div style={s.reembolsoGrid}>
               <div style={s.reembolsoBlock}>
                 <span style={s.reembolsoLabel}>Importe cobrado</span>
@@ -253,10 +291,12 @@ export function CancelarReserva() {
               </div>
             </div>
           </section>
-
+ 
           {/* Motivo */}
           <section style={s.card} className="cr-fade">
-            <h2 style={s.cardTitle}>Motivo de la cancelación <span style={s.optional}>(opcional)</span></h2>
+            <h2 style={s.cardTitle}>
+              Motivo de cancelación <span style={s.optional}>(opcional)</span>
+            </h2>
             <textarea
               value={motivo}
               onChange={e => setMotivo(e.target.value)}
@@ -265,38 +305,44 @@ export function CancelarReserva() {
               style={s.textarea}
             />
           </section>
-
-          {/* Aviso */}
-          <div style={s.aviso} className="cr-fade">
+ 
+          {/* Aviso — diferente según tarifa */}
+          <div style={{ ...s.aviso, borderColor: color + '60', background: color + '0A' }} className="cr-fade">
             <span style={s.avisoIcon}>⚠️</span>
-            <p style={s.avisoText}>
-              Esta es una <strong>solicitud</strong>. Nuestro equipo la revisará y te confirmaremos
-              la cancelación y el reembolso por email en un plazo de 24–48 horas.
+            <p style={{ ...s.avisoText, color: '#555' }}>
+              {reserva.tarifa === 'NO_REEMBOLSABLE'
+                ? <>Al confirmar, tu reserva quedará <strong>cancelada de forma inmediata</strong>. La tarifa contratada es no reembolsable — no se realizará ningún reembolso.</>
+                : <>Al confirmar, tu reserva quedará <strong>cancelada de forma inmediata</strong> y recibirás un reembolso de <strong style={{ color }}>{formatEur(politica.importeReembolso)}</strong> según la política aplicable.</>
+              }
             </p>
           </div>
-
+ 
           {sendError && (
             <p style={s.errorMsg}>{sendError}</p>
           )}
-
+ 
           {/* Acciones */}
           <div style={s.actions} className="cr-fade">
-            <Link to="/" style={s.btnSecondary}>Cancelar — volver</Link>
+            <Link to="/" style={s.btnSecondary}>Volver — no cancelar</Link>
             <button
-              onClick={handleSubmit}
+              onClick={handleCancelar}
               disabled={sending}
-              style={{ ...s.btnPrimary, opacity: sending ? 0.7 : 1, cursor: sending ? 'not-allowed' : 'pointer' }}
+              style={{
+                ...s.btnDanger,
+                opacity: sending ? 0.7 : 1,
+                cursor: sending ? 'not-allowed' : 'pointer',
+              }}
             >
-              {sending ? 'Enviando…' : 'Enviar solicitud'}
+              {sending ? 'Cancelando…' : 'Confirmar cancelación'}
             </button>
           </div>
-
+ 
         </div>
       </div>
     </>
   )
 }
-
+ 
 // ─── Sub-componente Row ───────────────────────────────────────────────────────
 function Row({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
   return (
@@ -308,24 +354,24 @@ function Row({ label, value, strong }: { label: string; value: string; strong?: 
     </div>
   )
 }
-
+ 
 // ─── Global styles ────────────────────────────────────────────────────────────
 function GlobalStyles() {
   return (
     <style>{`
       @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Jost:wght@300;400;500&display=swap');
       @keyframes crFadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
-      @keyframes crSpin { to { transform: rotate(360deg); } }
+      @keyframes crSpin    { to   { transform: rotate(360deg); } }
       .cr-fade { animation: crFadeUp 0.45s ease both; }
       .cr-fade:nth-child(2) { animation-delay: 0.05s; }
-      .cr-fade:nth-child(3) { animation-delay: 0.1s; }
+      .cr-fade:nth-child(3) { animation-delay: 0.10s; }
       .cr-fade:nth-child(4) { animation-delay: 0.15s; }
-      .cr-fade:nth-child(5) { animation-delay: 0.2s; }
+      .cr-fade:nth-child(5) { animation-delay: 0.20s; }
       .cr-fade:nth-child(6) { animation-delay: 0.25s; }
     `}</style>
   )
 }
-
+ 
 // ─── Estilos ──────────────────────────────────────────────────────────────────
 const s: Record<string, React.CSSProperties> = {
   page: {
@@ -373,8 +419,7 @@ const s: Record<string, React.CSSProperties> = {
   },
   titleSm: {
     fontFamily: "'Cormorant Garamond', serif",
-    fontSize: 26, fontWeight: 600, color: '#1C2B25',
-    margin: 0,
+    fontSize: 26, fontWeight: 600, color: '#1C2B25', margin: 0,
   },
   subtitleSm: {
     color: '#8B9E98', fontSize: 14, lineHeight: 1.7,
@@ -389,8 +434,7 @@ const s: Record<string, React.CSSProperties> = {
   },
   headingTitle: {
     fontFamily: "'Cormorant Garamond', serif",
-    fontSize: 36, fontWeight: 600, color: '#1C2B25',
-    margin: '0 0 10px',
+    fontSize: 36, fontWeight: 600, color: '#1C2B25', margin: '0 0 10px',
   },
   headingSubtitle: { color: '#8B9E98', fontSize: 14, lineHeight: 1.6 },
   card: {
@@ -408,72 +452,75 @@ const s: Record<string, React.CSSProperties> = {
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
     flexWrap: 'wrap', gap: 8,
   },
-  tarifaBadge: {
-    fontSize: 12, fontFamily: "'Jost', sans-serif",
-    fontWeight: 500, letterSpacing: 0,
-  },
+  tarifaBadge: { fontSize: 12, fontFamily: "'Jost', sans-serif", fontWeight: 500 },
   row: {
     display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
     padding: '7px 0', gap: 16, borderBottom: '1px solid #F5F0E8',
   },
   rowLabel: { fontSize: 13, color: '#8B9E98', flexShrink: 0 },
-  rowValue: { fontSize: 13, textAlign: 'right' },
+  rowValue:  { fontSize: 13, textAlign: 'right' },
   policyBox: {
-    border: '1px solid', borderRadius: 12,
-    padding: '16px 20px', marginBottom: 16,
+    border: '1px solid', borderRadius: 12, padding: '16px 20px', marginBottom: 16,
   },
-  policyDias: { fontSize: 14, marginBottom: 10 },
+  policyDias:    { fontSize: 14, marginBottom: 10 },
   policyDivider: { height: 1, background: 'rgba(0,0,0,0.06)', margin: '10px 0' },
   policyBadge: {
     fontSize: 12, fontWeight: 600, padding: '4px 12px',
-    borderRadius: 20, display: 'inline-block',
+    borderRadius: 20, display: 'inline-block', marginBottom: 8,
   },
   policyDesc: { fontSize: 13, marginTop: 6, lineHeight: 1.5 },
-  reembolsoGrid: {
-    display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12,
-  },
+  reembolsoGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 },
   reembolsoBlock: {
     background: '#F9F6F0', borderRadius: 10,
-    padding: '12px 16px', display: 'flex',
-    flexDirection: 'column', gap: 4,
+    padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 4,
   },
   reembolsoLabel: { fontSize: 11, color: '#8B9E98', textTransform: 'uppercase', letterSpacing: '0.06em' },
-  reembolsoValue: { fontSize: 18, fontWeight: 600, fontFamily: "'Cormorant Garamond', serif", color: '#1C2B25' },
-  optional: { fontSize: 12, fontWeight: 400, color: '#8B9E98', fontFamily: "'Jost', sans-serif" },
+  reembolsoValue: {
+    fontSize: 18, fontWeight: 600,
+    fontFamily: "'Cormorant Garamond', serif", color: '#1C2B25',
+  },
+  reembolsoConfirmBox: {
+    border: '1px solid', borderRadius: 12,
+    padding: '20px 24px', textAlign: 'center',
+    maxWidth: 380, width: '100%',
+  },
+  optional:  { fontSize: 12, fontWeight: 400, color: '#8B9E98', fontFamily: "'Jost', sans-serif" },
   textarea: {
     width: '100%', padding: '12px 14px', borderRadius: 10,
     border: '1px solid #E5E0D8', fontFamily: "'Jost', sans-serif",
     fontSize: 14, color: '#1C2B25', resize: 'vertical',
-    outline: 'none', background: '#FAFAF8', boxSizing: 'border-box',
-    lineHeight: 1.6,
+    outline: 'none', background: '#FAFAF8', boxSizing: 'border-box', lineHeight: 1.6,
   },
   aviso: {
     display: 'flex', gap: 12, alignItems: 'flex-start',
-    background: '#FFF8EE', border: '1px solid #F5DFB0',
-    borderRadius: 12, padding: '14px 18px',
+    border: '1px solid', borderRadius: 12, padding: '14px 18px',
   },
   avisoIcon: { fontSize: 18, flexShrink: 0, marginTop: 1 },
-  avisoText: { fontSize: 13, color: '#7A5F2A', lineHeight: 1.6 },
-  errorMsg: { fontSize: 13, color: '#C62828', textAlign: 'center', padding: '8px 0' },
+  avisoText: { fontSize: 13, lineHeight: 1.6, margin: 0 },
+  errorMsg:  { fontSize: 13, color: '#C62828', textAlign: 'center', padding: '8px 0' },
   actions: {
-    display: 'flex', gap: 12, justifyContent: 'flex-end',
-    flexWrap: 'wrap',
+    display: 'flex', gap: 12, justifyContent: 'flex-end', flexWrap: 'wrap',
   },
   btnPrimary: {
     padding: '12px 28px', borderRadius: 10,
     background: '#2D4A3E', color: 'white',
-    fontSize: 14, fontWeight: 500,
-    textDecoration: 'none', border: 'none',
-    fontFamily: "'Jost', sans-serif",
+    fontSize: 14, fontWeight: 500, textDecoration: 'none',
+    border: 'none', fontFamily: "'Jost', sans-serif",
     display: 'inline-block', cursor: 'pointer',
+  },
+  btnDanger: {
+    padding: '12px 28px', borderRadius: 10,
+    background: '#B91C1C', color: 'white',
+    fontSize: 14, fontWeight: 500, textDecoration: 'none',
+    border: 'none', fontFamily: "'Jost', sans-serif",
+    display: 'inline-block',
   },
   btnSecondary: {
     padding: '12px 28px', borderRadius: 10,
     background: 'transparent', color: '#2D4A3E',
     border: '2px solid #2D4A3E',
-    fontSize: 14, fontWeight: 500,
-    textDecoration: 'none',
-    fontFamily: "'Jost', sans-serif",
-    display: 'inline-block',
+    fontSize: 14, fontWeight: 500, textDecoration: 'none',
+    fontFamily: "'Jost', sans-serif", display: 'inline-block',
   },
 }
+ 

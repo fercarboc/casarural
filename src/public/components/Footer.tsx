@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Instagram, Facebook, Phone, Mail, MapPin, ArrowRight } from 'lucide-react';
+import { GestionarCookiesBtn } from '../../shared/components/CookieBanner';
 
 export const Footer = () => {
   return (
@@ -34,6 +35,7 @@ export const Footer = () => {
                 <li><Link to="/la-casa" className="hover:text-emerald-400 transition-colors">La Casa</Link></li>
                 <li><Link to="/galeria" className="hover:text-emerald-400 transition-colors">Galería</Link></li>
                 <li><Link to="/servicios" className="hover:text-emerald-400 transition-colors">Servicios</Link></li>
+                <li><Link to="/actividades" className="hover:text-emerald-400 transition-colors">Actividades</Link></li>
                 <li><Link to="/reservar" className="hover:text-emerald-400 transition-colors">Reservas</Link></li>
                 <li><Link to="/contacto" className="hover:text-emerald-400 transition-colors">Contacto</Link></li>
               </ul>
@@ -41,9 +43,8 @@ export const Footer = () => {
             <div className="space-y-6">
               <h4 className="text-sm font-bold uppercase tracking-widest text-white">Información</h4>
               <ul className="space-y-3 text-sm">
-                <li><Link to="/soporte" className="hover:text-emerald-400 transition-colors">Centro de ayuda</Link></li>
-                <li><Link to="/soporte" className="hover:text-emerald-400 transition-colors">Preguntas frecuentes</Link></li>
-                <li><Link to="/condiciones-reserva" className="hover:text-emerald-400 transition-colors">Condiciones de reserva</Link></li>
+                <li><Link to="/ayuda" className="hover:text-emerald-400 transition-colors">Centro de ayuda</Link></li>
+                <li><Link to="/condiciones" className="hover:text-emerald-400 transition-colors">Condiciones de reserva</Link></li>
                 <li><Link to="/politica-cancelaciones" className="hover:text-emerald-400 transition-colors">Política de cancelación</Link></li>
                 <li><Link to="/contacto" className="hover:text-emerald-400 transition-colors">Contacto</Link></li>
               </ul>
@@ -82,11 +83,12 @@ export const Footer = () => {
         {/* Legal Links Bar */}
         <div className="border-t border-stone-800 pt-10 flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-[11px] uppercase tracking-widest text-stone-500">
-            <Link to="/soporte" className="hover:text-stone-300 transition-colors">Ayuda</Link>
+            <Link to="/ayuda" className="hover:text-stone-300 transition-colors">Ayuda</Link>
             <Link to="/aviso-legal" className="hover:text-stone-300 transition-colors">Aviso Legal</Link>
-            <Link to="/politica-privacidad" className="hover:text-stone-300 transition-colors">Privacidad</Link>
-            <Link to="/politica-cookies" className="hover:text-stone-300 transition-colors">Cookies</Link>
+            <Link to="/privacidad" className="hover:text-stone-300 transition-colors">Privacidad</Link>
+            <Link to="/cookies" className="hover:text-stone-300 transition-colors">Cookies</Link>
             <Link to="/rgpd" className="hover:text-stone-300 transition-colors">RGPD</Link>
+            <GestionarCookiesBtn />
             <Link to="/admin" className="hover:text-stone-300 transition-colors font-bold border-l border-stone-800 pl-6 ml-2">Acceso Propietario</Link>
           </div>
           <p className="text-[11px] uppercase tracking-widest text-stone-600">

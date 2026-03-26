@@ -63,7 +63,7 @@ const FAQS = [
       },
       {
         q: '¿Puedo cancelar mi reserva?',
-        a: 'Depende de la tarifa elegida. Con tarifa flexible, si cancelas con más de 30 días de antelación te devolvemos la señal. Con tarifa no reembolsable no hay devolución salvo casos de fuerza mayor (obras, averías graves) que sean responsabilidad nuestra, en cuyo caso te devolvemos el importe íntegro.',
+        a: 'Depende de la tarifa elegida.\n\nTarifa flexible: la política de cancelación funciona por tramos según la antelación con la que canceles respecto a la fecha de entrada. Con más de 60 días de antelación se devuelve el 100% de lo pagado. Entre 45 y 60 días se devuelve el 50%. Entre 30 y 45 días se devuelve el 25%. Con menos de 30 días de antelación no hay devolución.\n\nTarifa no reembolsable: no hay devolución en ningún caso, salvo fuerza mayor imputable a nosotros (obras, averías graves de la propiedad), en cuyo caso se devuelve el importe íntegro.',
       },
       {
         q: '¿Se emite factura?',
@@ -71,7 +71,7 @@ const FAQS = [
       },
       {
         q: '¿Hay fianza o depósito?',
-        a: 'No exigimos fianza adicional. Confiamos en el buen uso de la propiedad. En caso de daños materiales graves nos reservamos el derecho a reclamar los gastos de reparación.',
+        a: 'Sí. Al hacer el check-in solicitamos una fianza de 150 € en efectivo o transferencia, que se devuelve al día siguiente una vez comprobado el estado de la propiedad. En caso de daños materiales se descontarán los gastos de reparación de la fianza.',
       },
     ],
   },
@@ -80,7 +80,7 @@ const FAQS = [
     items: [
       {
         q: '¿Qué incluye el alojamiento?',
-        a: 'La Rasilla incluye ropa de cama, toallas, wifi de alta velocidad, calefacción, cocina completamente equipada, barbacoa, jardín y zona de juegos. La tarifa de limpieza final está incluida en el precio.',
+        a: 'La Rasilla incluye ropa de cama, toallas, calefacción, cocina completamente equipada, barbacoa, jardín y zona de juegos. La tarifa de limpieza final está incluida en el precio. Ten en cuenta que la casa no dispone de wifi.',
       },
       {
         q: '¿Se admiten mascotas?',
@@ -114,7 +114,7 @@ function FaqItem({ q, a }: { q: string; a: string }) {
         }
       </button>
       {open && (
-        <p className="text-sm text-stone-600 leading-relaxed pb-5 pr-8">{a}</p>
+        <p className="text-sm text-stone-600 leading-relaxed pb-5 pr-8 whitespace-pre-line">{a}</p>
       )}
     </div>
   );

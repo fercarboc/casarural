@@ -42,7 +42,7 @@ export const LaCasaPage: React.FC = () => {
                 "Capacidad flexible de 10 a 11 personas",
                 "5 amplias habitaciones dobles",
                 "Jardín privado con barbacoa, vallado y seguro",
-                "Parking exclusivo dentro de la propiedad"
+                 "En el Centro del Pueblo, junto a la zona infantil",
               ].map((item, i) => (
                 <li key={i} className="flex items-center gap-3 text-stone-700 font-medium">
                   <CheckCircle2 size={20} className="text-emerald-600" /> {item}
