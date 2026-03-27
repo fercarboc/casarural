@@ -2,8 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react'
 import {
   Search, Download, Mail, Phone, Calendar, Euro, X, ChevronRight,
   Users, FileText, MessageSquare, CheckCircle2, Clock, AlertCircle,
-  Loader2, BookOpen, User, ExternalLink, RefreshCw, Pencil, Trash2
+  Loader2, BookOpen, User, ExternalLink, RefreshCw, Pencil, Trash2, Plus
 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { supabase } from '../../integrations/supabase/client'
@@ -88,6 +89,7 @@ type EstadoConsulta = 'NUEVA' | 'VISTA' | 'RESPONDIDA' | 'ARCHIVADA'
 // ── Página principal ───────────────────────────────────────
 
 export const CustomersPage: React.FC = () => {
+  const navigate = useNavigate()
   const [contactos, setContactos] = useState<Contacto[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -165,9 +167,15 @@ export const CustomersPage: React.FC = () => {
               <h1 className="text-xl font-bold text-zinc-900">CRM · Clientes & Consultas</h1>
               <p className="text-xs text-zinc-400 mt-0.5">Gestión centralizada de contactos</p>
             </div>
-            <button onClick={loadData} className="p-2 rounded-lg hover:bg-zinc-100 text-zinc-400 transition-colors">
-              <RefreshCw size={16} />
-            </button>
+            <div className="flex items-center gap-2">
+              <button onClick={loadData} className="p-2 rounded-lg hover:bg-zinc-100 text-zinc-400 transition-colors">
+                <RefreshCw size={16} />
+              </button>
+              <button onClick={() => navigate('/admin/reservas/nueva')}
+                className="flex items-center gap-1.5 rounded-xl bg-zinc-900 px-3 py-2 text-xs font-bold text-white hover:bg-zinc-800 transition-all">
+                <Plus size={13} /> Nueva reserva
+              </button>
+            </div>
           </div>
 
           {/* Stats */}

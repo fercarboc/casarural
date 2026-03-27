@@ -2,9 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react'
 import {
   Search, Eye, Send, Copy, Check, X, Calendar,
   Users, Home, Clock, ChevronDown, Filter, RefreshCw, Loader2,
-  Edit2, Ban, AlertTriangle, Save
+  Edit2, Ban, AlertTriangle, Save, Plus
 } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../../integrations/supabase/client'
 import { format, parseISO, isAfter, isBefore, startOfDay, differenceInDays } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -86,6 +86,7 @@ const ORIGEN_LABEL: Record<string, string> = {
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 export const ReservationsPage: React.FC = () => {
+  const navigate = useNavigate()
   const [all, setAll]             = useState<ReservaAdmin[]>([])
   const [loading, setLoading]     = useState(true)
   const [tab, setTab]             = useState<'proximas' | 'en_casa' | 'historial' | 'canceladas' | 'todas'>('proximas')
@@ -146,9 +147,15 @@ export const ReservationsPage: React.FC = () => {
           <h1 className="text-3xl font-bold text-zinc-900">Reservas</h1>
           <p className="text-zinc-500">Gestión completa de reservas</p>
         </div>
-        <button onClick={load} className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-bold text-zinc-600 hover:bg-zinc-50 transition-all">
-          <RefreshCw size={15} /> Actualizar
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={load} className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-bold text-zinc-600 hover:bg-zinc-50 transition-all">
+            <RefreshCw size={15} /> Actualizar
+          </button>
+          <button onClick={() => navigate('/admin/reservas/nueva')}
+            className="flex items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-bold text-white hover:bg-zinc-800 transition-all">
+            <Plus size={15} /> Nueva reserva
+          </button>
+        </div>
       </header>
 
       {/* Stats rápidas */}

@@ -12,6 +12,9 @@ import { supabase } from '../../integrations/supabase/client'
 import { bookingService } from '../../services/booking.service'
 import { configService, PricingConfig } from '../../services/config.service'
 import { PriceBreakdown } from '../../shared/types/booking'
+import { ManualPaymentModal } from '../components/ManualPaymentModal'
+import { ModalSolicitudPago } from '../components/ModalSolicitudPago'
+import { ModalConfirmacionReserva } from '../components/ModalConfirmacionReserva'
 
 // ─── Tipo ──────────────────────────────────────────────────────────────────────
 interface Reserva {
@@ -76,8 +79,11 @@ export const ReservationDetailPage: React.FC = () => {
   const [copied, setCopied]         = useState(false)
   const [cancelling, setCancelling] = useState(false)
   const [pricingConfig, setPricingConfig] = useState<PricingConfig | null>(null)
-  const [sendingCheckin, setSendingCheckin] = useState(false)
-  const [checkinSent, setCheckinSent]       = useState(false)
+  const [sendingCheckin, setSendingCheckin]       = useState(false)
+  const [checkinSent, setCheckinSent]             = useState(false)
+  const [showManualPayment, setShowManualPayment] = useState(false)
+  const [showSolicitudPago, setShowSolicitudPago] = useState(false)
+  const [showConfirmacion, setShowConfirmacion]   = useState(false)
 
   useEffect(() => {
     configService.getConfig().then(cfg => setPricingConfig(cfg.pricing)).catch(() => {})
@@ -195,6 +201,18 @@ export const ReservationDetailPage: React.FC = () => {
           <button onClick={load} className="p-2 rounded-xl border border-zinc-200 hover:bg-zinc-50 text-zinc-400 transition-all">
             <RefreshCw size={16} />
           </button>
+          {r.estado === 'CONFIRMED' && r.estado_pago !== 'PAID' && (
+            <button onClick={() => setShowSolicitudPago(true)}
+              className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-bold text-zinc-600 hover:bg-zinc-50 transition-all">
+              <CreditCard size={15} /> Solicitud de pago
+            </button>
+          )}
+          {r.estado === 'CONFIRMED' && (
+            <button onClick={() => setShowConfirmacion(true)}
+              className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-bold text-zinc-600 hover:bg-zinc-50 transition-all">
+              <Mail size={15} /> Enviar confirmación
+            </button>
+          )}
           {r.token_cliente && r.estado === 'CONFIRMED' && (
             <>
               <button onClick={copyLink}
@@ -305,12 +323,20 @@ export const ReservationDetailPage: React.FC = () => {
                       <span className="font-bold text-emerald-700">{r.importe_senal.toLocaleString('es-ES')} €</span>
                     </div>
                     {restoPendiente > 0 && (
-                      <div className="flex justify-between text-sm">
+                      <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center gap-2">
                           <span className="h-2 w-2 rounded-full bg-amber-400" />
                           <span className="text-zinc-600">Resto pendiente</span>
                         </div>
-                        <span className="font-bold text-amber-700">{restoPendiente.toLocaleString('es-ES')} €</span>
+                        <div className="flex items-center gap-3">
+                          <span className="font-bold text-amber-700">{restoPendiente.toLocaleString('es-ES')} €</span>
+                          <button
+                            onClick={() => setShowManualPayment(true)}
+                            className="flex items-center gap-1.5 rounded-lg bg-zinc-900 px-3 py-1.5 text-xs font-bold text-white hover:bg-zinc-700 transition-all"
+                          >
+                            <CreditCard size={12} /> Cobrar
+                          </button>
+                        </div>
                       </div>
                     )}
                   </>
@@ -486,9 +512,33 @@ export const ReservationDetailPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {showManualPayment && (
+        <ManualPaymentModal
+          reserva={r}
+          onClose={() => setShowManualPayment(false)}
+          onSuccess={() => { setShowManualPayment(false); load() }}
+        />
+      )}
+      {showSolicitudPago && (
+        <ModalSolicitudPago
+          reserva={r}
+          onClose={() => setShowSolicitudPago(false)}
+          onSuccess={() => { setShowSolicitudPago(false); load() }}
+        />
+      )}
+      {showConfirmacion && (
+        <ModalConfirmacionReserva
+          reserva={r}
+          onClose={() => setShowConfirmacion(false)}
+          onSuccess={() => { setShowConfirmacion(false); load() }}
+        />
+      )}
     </div>
   )
 }
+
+
 
 // ─── Helper: parsea el campo solicitud_cambio ──────────────────────────────────
 function parseSolicitudCambio(s: string) {

@@ -28,6 +28,7 @@ import { DashboardPage } from './admin/pages/DashboardPage';
 import { CalendarPage } from './admin/pages/CalendarPage';
 import { ReservationsPage } from './admin/pages/ReservationsPage';
 import { ReservationDetailPage } from './admin/pages/ReservationDetailPage';
+import { NewReservationPage } from './admin/pages/NewReservationPage';
 import { CustomersPage } from './admin/pages/CustomersPage';
 import { IncomePage } from './admin/pages/IncomePage';
 import { InvoicesPage } from './admin/pages/InvoicesPage';
@@ -173,6 +174,7 @@ export default function App() {
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="calendario" element={<CalendarPage />} />
             <Route path="reservas" element={<ReservationsPage />} />
+            <Route path="reservas/nueva" element={<NewReservationPage />} />
             <Route path="reservas/:id" element={<ReservationDetailPage />} />
             <Route path="clientes" element={<CustomersPage />} />
             <Route path="ingresos" element={<IncomePage />} />
