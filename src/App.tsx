@@ -52,6 +52,20 @@ const NAV_LINKS = [
   { to: '/contacto', label: 'Contacto' },
 ];
 
+const TEST_MODE = (import.meta as any).env.VITE_BOOKING_TEST_MODE === 'true';
+
+// Página simple que muestra cuando Stripe cancela el checkout
+const ReservaCancelada = () => (
+  <div className="mx-auto max-w-xl px-6 py-20 text-center">
+    <div className="text-5xl mb-6">↩</div>
+    <h1 className="text-2xl font-serif font-bold text-stone-800 mb-3">Pago cancelado</h1>
+    <p className="text-stone-500 mb-8">No se ha realizado ningún cargo. Puedes volver a intentarlo cuando quieras.</p>
+    <Link to="/reservar" className="inline-block rounded-full bg-emerald-800 px-8 py-3 text-sm font-semibold text-white hover:bg-emerald-900 transition-colors">
+      Volver a reservar
+    </Link>
+  </div>
+);
+
 // Layouts
 const PublicLayout = ({ children }: { children: React.ReactNode }) => {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -62,6 +76,12 @@ const PublicLayout = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <div className="min-h-screen bg-stone-50 font-sans text-stone-900 flex flex-col">
+      {/* Banner modo pruebas — solo visible cuando VITE_BOOKING_TEST_MODE=true */}
+      {TEST_MODE && (
+        <div className="w-full bg-amber-400 text-amber-950 text-center text-xs font-bold py-2 px-4 tracking-wide z-50">
+          MODO PRUEBAS — Web en desarrollo. Las reservas usan Stripe TEST y no son reales.
+        </div>
+      )}
       <nav className="sticky top-0 z-50 border-b border-stone-200 bg-white/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <Link to="/" className="text-2xl font-serif font-bold tracking-tight text-stone-800">La Rasilla</Link>
@@ -129,6 +149,7 @@ export default function App() {
           <Route path="/contacto" element={<PublicLayout><ContactoPage /></PublicLayout>} />
           <Route path="/reservar" element={<PublicLayout><BookingPage /></PublicLayout>} />
           <Route path="/reserva/confirmada" element={<ReservaConfirmada />} />
+          <Route path="/reserva/cancelada" element={<PublicLayout><ReservaCancelada /></PublicLayout>} />
           <Route path="/reserva/cancelar" element={<PublicLayout><CancelarReserva /></PublicLayout>} />
           <Route path="/reserva/cambio" element={<PublicLayout><CambioFechas /></PublicLayout>} />
           <Route path="/reserva/:token" element={<PublicLayout><ReservationViewPage /></PublicLayout>} />

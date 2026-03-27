@@ -110,7 +110,7 @@ serve(async (req) => {
       customer_email: reserva.email,
       line_items: lineItems,
       success_url: `${appUrl}/reserva/confirmada?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url:  `${appUrl}/reservar?cancelled=true`,
+      cancel_url:  `${appUrl}/reserva/cancelada`,
       metadata: {
         reserva_id:     reserva.id,
         reserva_codigo: reserva.codigo,

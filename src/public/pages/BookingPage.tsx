@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
 import { isBefore, isSameDay, parseISO } from 'date-fns';
-import { ShieldCheck, Info, AlertCircle, CheckCircle2, Calendar, Zap, CreditCard } from 'lucide-react';
+import { ShieldCheck, Info, AlertCircle, CheckCircle2, Calendar, Zap, CreditCard, FlaskConical, X } from 'lucide-react';
+
+const TEST_MODE = (import.meta as any).env.VITE_BOOKING_TEST_MODE === 'true';
 
 import { AvailabilityCalendar } from '../components/AvailabilityCalendar';
 import { BookingCheckoutSection, CustomerFormData } from '../components/BookingCheckoutSection';
@@ -28,6 +30,8 @@ export default function BookingPage() {
   const [occupiedDates, setOccupiedDates] = useState<Date[]>([]);
   const [pricingConfig, setPricingConfig] = useState<PricingConfig | null>(null);
   const checkoutRef = useRef<HTMLDivElement>(null);
+  // Modo test: guarda el form mientras se muestra el modal de confirmación
+  const [testConfirmPending, setTestConfirmPending] = useState<CustomerFormData | null>(null);
 
   const getMinStay = (date: Date | null): { nights: number; label: string } => {
     if (!date) return { nights: 2, label: 'Temporada general' };
@@ -100,6 +104,15 @@ export default function BookingPage() {
   };
 
   const handlePay = async (form: CustomerFormData) => {
+    // En modo test mostramos un modal de confirmación antes de redirigir a Stripe
+    if (TEST_MODE) {
+      setTestConfirmPending(form);
+      return;
+    }
+    await executePayment(form);
+  };
+
+  const executePayment = async (form: CustomerFormData) => {
     if (!checkIn || !checkOut) return;
     setIsBooking(true);
     setBookingError(null);
@@ -199,6 +212,53 @@ export default function BookingPage() {
         title="Reservar | Mejor precio garantizado casa rural Cantabria | La Rasilla"
         description="Reserva tu estancia en La Rasilla directamente desde nuestra web. Sin comisiones, mejor precio garantizado y confirmación inmediata."
       />
+
+      {/* Modal de confirmación modo test */}
+      {TEST_MODE && testConfirmPending && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex items-center gap-2 text-amber-700">
+                <FlaskConical size={20} />
+                <span className="font-bold text-base">Modo pruebas activo</span>
+              </div>
+              <button onClick={() => setTestConfirmPending(null)} className="text-stone-400 hover:text-stone-600">
+                <X size={20} />
+              </button>
+            </div>
+            <p className="text-sm text-stone-600 mb-2">
+              Estás a punto de iniciar un pago de <strong>prueba</strong> con Stripe TEST.
+            </p>
+            <ul className="text-sm text-stone-500 space-y-1 mb-5 list-disc list-inside">
+              <li>No se realizará ningún cargo real</li>
+              <li>Usa la tarjeta de test: <code className="bg-stone-100 px-1 rounded">4242 4242 4242 4242</code></li>
+              <li>Cualquier fecha futura y CVV de 3 dígitos</li>
+            </ul>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setTestConfirmPending(null)}
+                className="flex-1 rounded-xl border border-stone-200 py-2.5 text-sm font-medium text-stone-600 hover:bg-stone-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => { const f = testConfirmPending; setTestConfirmPending(null); executePayment(f); }}
+                className="flex-1 rounded-xl bg-amber-500 py-2.5 text-sm font-bold text-white hover:bg-amber-600 transition-colors"
+              >
+                Continuar con el test
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Banner modo test */}
+      {TEST_MODE && (
+        <div className="mb-6 flex items-center gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <FlaskConical size={16} className="shrink-0" />
+          <span><strong>Modo pruebas:</strong> Las reservas usan Stripe TEST. No se realizarán cargos reales.</span>
+        </div>
+      )}
 
       <header className="mb-10 text-center">
         <h1 className="text-4xl font-serif font-bold text-stone-800 md:text-5xl">Reserva tu estancia en La Rasilla</h1>

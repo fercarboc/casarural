@@ -80,28 +80,36 @@ export function CancelarReserva() {
     if (!reserva) return
     setSending(true)
     setSendError(null)
- 
+
     try {
-      const SUPABASE_URL     = (import.meta as any).env.VITE_SUPABASE_URL as string
+      const SUPABASE_URL      = (import.meta as any).env.VITE_SUPABASE_URL as string
       const SUPABASE_ANON_KEY = (import.meta as any).env.VITE_SUPABASE_ANON_KEY as string
- 
-      // Llamar a cancel-reservation con el token del cliente
-      // La Edge Function hace TODO: cancela reserva, reembolso Stripe,
-      // registra retención, audit log y envía emails
+
       const res = await fetch(`${SUPABASE_URL}/functions/v1/cancel-reservation`, {
         method:  'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'apikey':        SUPABASE_ANON_KEY,
+          'Content-Type':  'application/json',
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
         },
+        // La Edge Function espera reservaId, no token.
+        // El componente ya tiene la reserva cargada, así que usamos reserva.id directamente.
         body: JSON.stringify({
-          token,
-          reason: motivo.trim() || undefined,
+          reservaId:   reserva.id,
+          cancelledBy: 'guest',
+          reason:      motivo.trim() || undefined,
         }),
       })
- 
+
+      // Comprobar content-type antes de parsear como JSON
+      const ct = res.headers.get('content-type') ?? ''
+      if (!ct.includes('application/json')) {
+        const body = await res.text().catch(() => '')
+        console.error('[cancel-reservation] Respuesta no-JSON', { status: res.status, ct, body: body.slice(0, 300) })
+        throw new Error(`Error del servidor (HTTP ${res.status}). Contacta con el alojamiento.`)
+      }
+
       const data = await res.json()
- 
+
       if (!res.ok || !data.success) {
         throw new Error(data.error ?? 'Error al cancelar la reserva')
       }
