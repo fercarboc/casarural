@@ -159,7 +159,7 @@ export const bookingService = {
     const extraGuestFeePerNight = isHighSeason ? (cfg?.extra_huesped_alta  ?? 30)  : (cfg?.extra_huesped_base  ?? 30);
     const cleaningFee           = cfg?.limpieza                    ?? 60;
     const discountPct           = (cfg?.descuento_no_reembolsable  ?? 10) / 100;
-    const depositPct            = (cfg?.porcentaje_senal           ?? 30) / 100;
+    const depositPct            = (cfg?.porcentaje_senal           ?? 50) / 100;
 
     const accommodationTotal = nightlyPrice * nights;
     const extraGuestsCount   = guests === 11 ? 1 : 0;

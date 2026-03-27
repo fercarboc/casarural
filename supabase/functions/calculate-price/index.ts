@@ -68,7 +68,7 @@ serve(async (req) => {
     }
 
     const total         = importeAlojamiento + importeExtra + limpieza - descuento;
-    const pctSenal      = (config?.porcentaje_senal ?? 30) / 100;
+    const pctSenal      = (config?.porcentaje_senal ?? 50) / 100;
     const importeSenal  = (rateType === 'FLEXIBLE') ? total * pctSenal : null;
 
     return Response.json({
