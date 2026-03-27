@@ -4,7 +4,8 @@
 
 import React, { useEffect, useState } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
-import { supabase } from '../../integrations/supabase/client'
+import { supabase, isMockMode } from '../../integrations/supabase/client'
+// Nota: la reserva se carga vía Edge Function, sin query directa a la DB
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface Reserva {
@@ -72,22 +73,62 @@ export default function ReservaConfirmada() {
       return
     }
 
-    async function fetchReserva() {
-      const { data, error: err } = await supabase
-        .from('reservas')
-        .select('*')
-        .eq('stripe_session_id', sessionId)
-        .single()
+    if (isMockMode) {
+      setError('La conexión con el servidor no está configurada. Contacta con el alojamiento.')
+      setLoading(false)
+      return
+    }
 
-      if (err || !data) {
-        setError('Reserva no encontrada o enlace caducado.')
-      } else {
-        setReserva(data)
+    // Stripe redirige al cliente al mismo tiempo que dispara el webhook.
+    // El webhook puede tardar unos segundos en escribir stripe_session_id en la DB.
+    // Reintentamos hasta 6 veces (cada 2 s = 12 s máximo) antes de mostrar error.
+    async function fetchReservaConRetry() {
+      const MAX = 6
+      for (let intento = 1; intento <= MAX; intento++) {
+        try {
+          const { data, error: fnError } = await supabase.functions.invoke(
+            'get-reservation',
+            { body: { sessionId } }
+          )
+
+          if (fnError) {
+            // 404 = webhook aún no ha procesado, reintentar
+            const status = (fnError as any)?.context?.status ?? 0
+            if (status === 404 && intento < MAX) {
+              await new Promise(r => setTimeout(r, 2000))
+              continue
+            }
+            console.error('[ReservaConfirmada] Error función:', fnError)
+            setError('Error al cargar la reserva. Por favor recarga la página.')
+            setLoading(false)
+            return
+          }
+
+          if (data?.reserva) {
+            setReserva(data.reserva)
+            setLoading(false)
+            return
+          }
+
+          // Sin datos y sin error explícito — reintentar si quedan intentos
+          if (intento < MAX) {
+            await new Promise(r => setTimeout(r, 2000))
+          }
+
+        } catch (e: any) {
+          console.error('[ReservaConfirmada] Error inesperado:', e)
+          setError('Error al conectar con el servidor. Por favor recarga la página.')
+          setLoading(false)
+          return
+        }
       }
+
+      // Agotados los reintentos
+      setError('Tu pago ha sido procesado correctamente. Si esta página no carga, revisa el email de confirmación que te hemos enviado.')
       setLoading(false)
     }
 
-    fetchReserva()
+    fetchReservaConRetry()
   }, [sessionId])
 
   // ── Loading ────────────────────────────────────────────────────────────────

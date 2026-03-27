@@ -5,6 +5,7 @@ import { ShieldCheck, Info, AlertCircle, CheckCircle2, Calendar, Zap, CreditCard
 
 const TEST_MODE = (import.meta as any).env.VITE_BOOKING_TEST_MODE === 'true';
 
+import { supabase, isMockMode } from '../../integrations/supabase/client';
 import { AvailabilityCalendar } from '../components/AvailabilityCalendar';
 import { BookingCheckoutSection, CustomerFormData } from '../components/BookingCheckoutSection';
 import { bookingService } from '../../services/booking.service';
@@ -117,72 +118,50 @@ export default function BookingPage() {
     setIsBooking(true);
     setBookingError(null);
 
-    const SUPABASE_URL      = (import.meta as any).env.VITE_SUPABASE_URL as string;
-    const SUPABASE_ANON_KEY = (import.meta as any).env.VITE_SUPABASE_ANON_KEY as string;
     const fmt = (d: Date) => d.toISOString().split('T')[0]; // YYYY-MM-DD
 
-    // Parsea JSON de forma segura: si la respuesta no es JSON (HTML de error, 404, etc.)
-    // loga el cuerpo real para diagnóstico y lanza un error legible.
-    const safeJson = async (res: Response, label: string) => {
-      const ct = res.headers.get('content-type') ?? '';
-      if (!ct.includes('application/json')) {
-        const body = await res.text().catch(() => '(no se pudo leer el body)');
-        console.error(`[${label}] Respuesta no-JSON`, {
-          status: res.status,
-          'content-type': ct,
-          url: res.url,
-          body: body.slice(0, 500),
-        });
-        throw new Error(
-          `Error de configuración del servidor (HTTP ${res.status}). ` +
-          `Contacta con el alojamiento si el problema persiste.`
-        );
-      }
-      return res.json();
-    };
-
     try {
-      // PASO 1 — Crear pre-reserva server-side (Edge Function usa service_role, bypassa RLS)
-      const preRes = await fetch(`${SUPABASE_URL}/functions/v1/create-pre-reservation`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({
-          checkIn:  fmt(checkIn),
-          checkOut: fmt(checkOut),
-          guests,
-          rateType,
-          menores: form.menores ?? 0,
-          guestData: {
-            nombre:    form.nombre,
-            apellidos: form.apellidos,
-            email:     form.email,
-            telefono:  form.telefono,
-            dni:       form.numero_documento ?? '',
-          },
-        }),
-      });
+      // Guard: si las variables de entorno no están, falla rápido con mensaje claro
+      if (isMockMode) {
+        throw new Error('La conexión con el servidor no está configurada. Contacta con el alojamiento.');
+      }
 
-      const preReserva = await safeJson(preRes, 'create-pre-reservation');
-      if (!preRes.ok || preReserva.error) {
-        throw new Error(preReserva.error ?? 'Error al crear la reserva');
+      // PASO 1 — Crear pre-reserva (Edge Function)
+      const { data: preReserva, error: preError } = await supabase.functions.invoke(
+        'create-pre-reservation',
+        {
+          body: {
+            checkIn:  fmt(checkIn),
+            checkOut: fmt(checkOut),
+            guests,
+            rateType,
+            menores: form.menores ?? 0,
+            guestData: {
+              nombre:    form.nombre,
+              apellidos: form.apellidos,
+              email:     form.email,
+              telefono:  form.telefono,
+              dni:       form.numero_documento ?? '',
+            },
+          },
+        }
+      );
+
+      if (preError) {
+        // FunctionsHttpError incluye el body de la función como context
+        const msg = (preReserva as any)?.error ?? preError.message ?? 'Error al crear la reserva';
+        throw new Error(msg);
       }
 
       // PASO 2 — Crear sesión de Stripe
-      const checkoutRes = await fetch(`${SUPABASE_URL}/functions/v1/create-stripe-checkout`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({ reservaId: preReserva.reserva_id }),
-      });
+      const { data: checkout, error: checkoutError } = await supabase.functions.invoke(
+        'create-stripe-checkout',
+        { body: { reservaId: preReserva.reserva_id } }
+      );
 
-      const checkout = await safeJson(checkoutRes, 'create-stripe-checkout');
-      if (!checkoutRes.ok || checkout.error) {
-        throw new Error(checkout.error ?? 'Error al iniciar el pago');
+      if (checkoutError) {
+        const msg = (checkout as any)?.error ?? checkoutError.message ?? 'Error al iniciar el pago';
+        throw new Error(msg);
       }
 
       // PASO 3 — Redirigir a Stripe Checkout
