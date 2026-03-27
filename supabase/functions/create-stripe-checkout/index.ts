@@ -29,8 +29,18 @@ serve(async (req) => {
 
     if (error || !reserva) return Response.json({ error: 'Reserva no encontrada' }, { status: 404, headers: corsHeaders });
     if (reserva.estado !== 'PENDING_PAYMENT') return Response.json({ error: 'La reserva no está pendiente de pago' }, { status: 400, headers: corsHeaders });
-    // APP_URL: producción → dominio real | desarrollo → localhost
-    const appUrl = Deno.env.get('APP_URL') ?? 'http://localhost:5173';
+    // APP_URL: tomar de variable de entorno (configurada en Supabase Secrets).
+    // Si no está definida, intentar derivarla desde el Origin/Referer de la request
+    // para no caer en localhost (que bloquearía la confirmación en producción).
+    const appUrl = (() => {
+      const configured = Deno.env.get('APP_URL');
+      if (configured) return configured.replace(/\/$/, '');
+      const origin = req.headers.get('origin') ?? req.headers.get('referer') ?? '';
+      if (origin && !origin.includes('localhost') && !origin.includes('127.0.0.1')) {
+        try { return new URL(origin).origin; } catch { /* ignorar */ }
+      }
+      return 'http://localhost:5173';
+    })();
     const isFlexible = reserva.tarifa === 'FLEXIBLE';
     const importePago = isFlexible ? reserva.importe_senal : reserva.total;
 

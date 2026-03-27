@@ -108,6 +108,26 @@ export default function BookingPage() {
     const SUPABASE_ANON_KEY = (import.meta as any).env.VITE_SUPABASE_ANON_KEY as string;
     const fmt = (d: Date) => d.toISOString().split('T')[0]; // YYYY-MM-DD
 
+    // Parsea JSON de forma segura: si la respuesta no es JSON (HTML de error, 404, etc.)
+    // loga el cuerpo real para diagnóstico y lanza un error legible.
+    const safeJson = async (res: Response, label: string) => {
+      const ct = res.headers.get('content-type') ?? '';
+      if (!ct.includes('application/json')) {
+        const body = await res.text().catch(() => '(no se pudo leer el body)');
+        console.error(`[${label}] Respuesta no-JSON`, {
+          status: res.status,
+          'content-type': ct,
+          url: res.url,
+          body: body.slice(0, 500),
+        });
+        throw new Error(
+          `Error de configuración del servidor (HTTP ${res.status}). ` +
+          `Contacta con el alojamiento si el problema persiste.`
+        );
+      }
+      return res.json();
+    };
+
     try {
       // PASO 1 — Crear pre-reserva server-side (Edge Function usa service_role, bypassa RLS)
       const preRes = await fetch(`${SUPABASE_URL}/functions/v1/create-pre-reservation`, {
@@ -132,7 +152,7 @@ export default function BookingPage() {
         }),
       });
 
-      const preReserva = await preRes.json();
+      const preReserva = await safeJson(preRes, 'create-pre-reservation');
       if (!preRes.ok || preReserva.error) {
         throw new Error(preReserva.error ?? 'Error al crear la reserva');
       }
@@ -147,7 +167,7 @@ export default function BookingPage() {
         body: JSON.stringify({ reservaId: preReserva.reserva_id }),
       });
 
-      const checkout = await checkoutRes.json();
+      const checkout = await safeJson(checkoutRes, 'create-stripe-checkout');
       if (!checkoutRes.ok || checkout.error) {
         throw new Error(checkout.error ?? 'Error al iniciar el pago');
       }

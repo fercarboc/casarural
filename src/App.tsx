@@ -1,5 +1,5 @@
-import React from 'react';
-import { Routes, Route, Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Routes, Route, Link, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'motion/react';
 import BookingPage from './public/pages/BookingPage';
 import { HomePage } from './public/pages/HomePage';
@@ -43,29 +43,73 @@ import { useCookieConsent, CookieConsentContext } from './shared/hooks/useCookie
 import { CookieBanner } from './shared/components/CookieBanner';
 import { Analytics } from '@vercel/analytics/react';
 
+const NAV_LINKS = [
+  { to: '/la-casa', label: 'La Casa' },
+  { to: '/galeria', label: 'Galería' },
+  { to: '/servicios', label: 'Servicios' },
+  { to: '/actividades', label: 'Actividades' },
+  { to: '/donde-estamos', label: 'Dónde estamos' },
+  { to: '/contacto', label: 'Contacto' },
+];
+
 // Layouts
-const PublicLayout = ({ children }: { children: React.ReactNode }) => (
-  <div className="min-h-screen bg-stone-50 font-sans text-stone-900 flex flex-col">
-    <nav className="sticky top-0 z-50 border-b border-stone-200 bg-white/80 backdrop-blur-md">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-        <Link to="/" className="text-2xl font-serif font-bold tracking-tight text-stone-800">La Rasilla</Link>
-        <div className="hidden space-x-8 md:flex">
-          <Link to="/la-casa" className="text-sm font-medium hover:text-emerald-700 transition-colors">La Casa</Link>
-          <Link to="/galeria" className="text-sm font-medium hover:text-emerald-700 transition-colors">Galería</Link>
-          <Link to="/servicios" className="text-sm font-medium hover:text-emerald-700 transition-colors">Servicios</Link>
-          <Link to="/actividades" className="text-sm font-medium hover:text-emerald-700 transition-colors">Actividades</Link>
-          <Link to="/donde-estamos" className="text-sm font-medium hover:text-emerald-700 transition-colors">Dónde estamos</Link>
-          <Link to="/contacto" className="text-sm font-medium hover:text-emerald-700 transition-colors">Contacto</Link>
+const PublicLayout = ({ children }: { children: React.ReactNode }) => {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const location = useLocation();
+
+  // Cierra el menú al navegar
+  React.useEffect(() => { setMenuOpen(false); }, [location.pathname]);
+
+  return (
+    <div className="min-h-screen bg-stone-50 font-sans text-stone-900 flex flex-col">
+      <nav className="sticky top-0 z-50 border-b border-stone-200 bg-white/80 backdrop-blur-md">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+          <Link to="/" className="text-2xl font-serif font-bold tracking-tight text-stone-800">La Rasilla</Link>
+
+          {/* Desktop menu */}
+          <div className="hidden space-x-8 md:flex">
+            {NAV_LINKS.map(({ to, label }) => (
+              <Link key={to} to={to} className="text-sm font-medium hover:text-emerald-700 transition-colors">{label}</Link>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-3">
+            <Link to="/reservar" className="rounded-full bg-emerald-800 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-900/20 transition-all hover:bg-emerald-900 hover:scale-105 active:scale-95">
+              Reservar ahora
+            </Link>
+            {/* Hamburger button — only on mobile */}
+            <button
+              className="md:hidden flex flex-col justify-center items-center w-10 h-10 rounded-lg hover:bg-stone-100 transition-colors"
+              onClick={() => setMenuOpen(o => !o)}
+              aria-label="Abrir menú"
+            >
+              {menuOpen ? (
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-stone-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-stone-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              )}
+            </button>
+          </div>
         </div>
-        <Link to="/reservar" className="rounded-full bg-emerald-800 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-900/20 transition-all hover:bg-emerald-900 hover:scale-105 active:scale-95">
-          Reservar ahora
-        </Link>
-      </div>
-    </nav>
-    <main className="flex-grow">{children}</main>
-    <Footer />
-  </div>
-);
+
+        {/* Mobile dropdown */}
+        {menuOpen && (
+          <div className="md:hidden border-t border-stone-100 bg-white/95 px-6 py-4 flex flex-col gap-4">
+            {NAV_LINKS.map(({ to, label }) => (
+              <Link key={to} to={to} className="text-base font-medium text-stone-700 hover:text-emerald-700 transition-colors py-1">{label}</Link>
+            ))}
+          </div>
+        )}
+      </nav>
+      <main className="flex-grow">{children}</main>
+      <Footer />
+    </div>
+  );
+};
 
 export default function App() {
   const cookieConsent = useCookieConsent()
