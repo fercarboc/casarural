@@ -76,9 +76,11 @@ export const ReservationDetailPage: React.FC = () => {
   const [copied, setCopied]         = useState(false)
   const [cancelling, setCancelling] = useState(false)
   const [pricingConfig, setPricingConfig] = useState<PricingConfig | null>(null)
+  const [sendingCheckin, setSendingCheckin] = useState(false)
+  const [checkinSent, setCheckinSent]       = useState(false)
 
   useEffect(() => {
-    configService.getConfig().then(cfg => setPricingConfig(cfg)).catch(() => {})
+    configService.getConfig().then(cfg => setPricingConfig(cfg.pricing)).catch(() => {})
   }, [])
 
   const load = useCallback(async () => {
@@ -120,6 +122,24 @@ export const ReservationDetailPage: React.FC = () => {
     if (!r?.token_cliente) return
     navigator.clipboard.writeText(`${window.location.origin}/reserva/${r.token_cliente}`)
     setCopied(true); setTimeout(() => setCopied(false), 2000)
+  }
+
+  async function sendCheckinEmail() {
+    if (!r?.token_cliente) return
+    setSendingCheckin(true)
+    const checkinUrl = `${window.location.origin}/reserva/${r.token_cliente}`
+    await supabase.functions.invoke('send-email', {
+      body: {
+        template_key:   'checkin_link',
+        to_email:       r.email,
+        to_name:        `${r.nombre} ${r.apellidos}`,
+        reservation_id: r.id,
+        extra_vars:     { checkin_url: checkinUrl },
+      },
+    })
+    setSendingCheckin(false)
+    setCheckinSent(true)
+    setTimeout(() => setCheckinSent(false), 3000)
   }
 
   // ── Loading ────────────────────────────────────────────────────────────────
@@ -176,12 +196,24 @@ export const ReservationDetailPage: React.FC = () => {
             <RefreshCw size={16} />
           </button>
           {r.token_cliente && r.estado === 'CONFIRMED' && (
-            <button onClick={copyLink}
-              className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-bold transition-all ${
-                copied ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : 'border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50'
-              }`}>
-              {copied ? <><Check size={15} /> Copiado</> : <><Copy size={15} /> Enlace check-in</>}
-            </button>
+            <>
+              <button onClick={copyLink}
+                className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-bold transition-all ${
+                  copied ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : 'border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50'
+                }`}>
+                {copied ? <><Check size={15} /> Copiado</> : <><Copy size={15} /> Enlace check-in</>}
+              </button>
+              <button onClick={sendCheckinEmail} disabled={sendingCheckin || checkinSent}
+                className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-bold transition-all ${
+                  checkinSent ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : 'border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50 disabled:opacity-50'
+                }`}>
+                {checkinSent
+                  ? <><Check size={15} /> Email enviado</>
+                  : sendingCheckin
+                    ? <><Loader2 size={15} className="animate-spin" /> Enviando...</>
+                    : <><Send size={15} /> Enviar check-in</>}
+              </button>
+            </>
           )}
           {r.estado !== 'CANCELLED' && r.estado !== 'EXPIRED' && (
             <button onClick={cancelar} disabled={cancelling}
