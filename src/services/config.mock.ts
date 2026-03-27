@@ -1,25 +1,19 @@
-export const MOCK_CONFIG = {
-  basePrice: 120,
-  highSeasonPrice: 180,
-  extraGuestPrice: 25,
-  cleaningFee: 60,
-  minStay: 2,
-  maxGuests: 11,
-  policies: {
-    immediateBooking: true,
-    identityVerification: true,
-    petsAllowed: false
-  }
+import type { PricingConfig } from './config.service';
+
+// Valores que coinciden exactamente con la tabla configuracion en Supabase.
+// Se usan solo cuando isMockMode=true (env vars no disponibles en el build).
+export const MOCK_CONFIG: PricingConfig = {
+  precio_noche_base:         300,
+  precio_noche_alta:         330,
+  extra_huesped_base:        30,
+  extra_huesped_alta:        30,
+  limpieza:                  60,
+  descuento_no_reembolsable: 10,
+  porcentaje_senal:          30,
 };
 
 export const configMockService = {
-  getConfig: async () => {
-    const saved = localStorage.getItem('mock_config');
-    if (saved) return JSON.parse(saved);
+  getConfig: async (): Promise<PricingConfig> => {
     return MOCK_CONFIG;
   },
-  saveConfig: async (config: any) => {
-    localStorage.setItem('mock_config', JSON.stringify(config));
-    return config;
-  }
 };

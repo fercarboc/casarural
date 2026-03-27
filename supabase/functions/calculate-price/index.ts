@@ -51,9 +51,9 @@ serve(async (req) => {
     const isAlta = !!temporada;
 
     // Precios según temporada
-    const precioNoche    = isAlta ? (config?.precio_noche_alta ?? 300)      : (config?.precio_noche_base ?? 275);
-    const extraHuesped   = isAlta ? (config?.extra_huesped_alta ?? 30)      : (config?.extra_huesped_base ?? 27.5);
-    const limpieza       = config?.limpieza ?? 50;
+    const precioNoche    = isAlta ? (config?.precio_noche_alta ?? 330)      : (config?.precio_noche_base ?? 300);
+    const extraHuesped   = isAlta ? (config?.extra_huesped_alta ?? 30)      : (config?.extra_huesped_base ?? 30);
+    const limpieza       = config?.limpieza ?? 60;
     const capacidadBase  = config?.capacidad_base ?? 10;
 
     // Cálculo

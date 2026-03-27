@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
-import { isBefore, isSameDay, parseISO } from 'date-fns';
+import { isBefore, isSameDay, parseISO, differenceInDays } from 'date-fns';
 import { ShieldCheck, Info, AlertCircle, CheckCircle2, Calendar, Zap, CreditCard, FlaskConical, X } from 'lucide-react';
 
 const TEST_MODE = (import.meta as any).env.VITE_BOOKING_TEST_MODE === 'true';
@@ -10,7 +10,7 @@ import { AvailabilityCalendar } from '../components/AvailabilityCalendar';
 import { BookingCheckoutSection, CustomerFormData } from '../components/BookingCheckoutSection';
 import { bookingService } from '../../services/booking.service';
 import { calendarService } from '../../services/calendar.service';
-import { configService, PricingConfig } from '../../services/config.service';
+import { configService, AppConfig, getMinStayForDate } from '../../services/config.service';
 import { RateType } from '../../shared/types';
 import { PriceBreakdown } from '../../shared/types/booking';
 import { MetaTags } from '../components/MetaTags';
@@ -29,26 +29,22 @@ export default function BookingPage() {
   const [isBooking, setIsBooking] = useState(false);
   const [bookingError, setBookingError] = useState<string | null>(null);
   const [occupiedDates, setOccupiedDates] = useState<Date[]>([]);
-  const [pricingConfig, setPricingConfig] = useState<PricingConfig | null>(null);
+  const [appConfig, setAppConfig] = useState<AppConfig | null>(null);
   const checkoutRef = useRef<HTMLDivElement>(null);
   // Modo test: guarda el form mientras se muestra el modal de confirmación
   const [testConfirmPending, setTestConfirmPending] = useState<CustomerFormData | null>(null);
+  const [minStayWarning, setMinStayWarning] = useState<{ nights: number; nombre: string } | null>(null);
 
-  const getMinStay = (date: Date | null): { nights: number; label: string } => {
-    if (!date) return { nights: 2, label: 'Temporada general' };
-    const m = date.getMonth() + 1;
-    if (m === 7 || m === 8) return { nights: 3, label: 'Temporada alta (julio y agosto)' };
-    if (m === 12 || m === 1) return { nights: 3, label: 'Navidades y Año Nuevo' };
-    return { nights: 2, label: 'Temporada media/baja' };
-  };
-  const minStay = getMinStay(checkIn);
+  const minStay = checkIn && appConfig
+    ? getMinStayForDate(checkIn, appConfig)
+    : { nights: 2, nombre: 'Temporada general' };
 
   useEffect(() => {
     calendarService.getOccupiedDates()
       .then(dates => setOccupiedDates(dates.map(d => parseISO(d))))
       .catch(console.error);
     configService.getConfig()
-      .then(cfg => setPricingConfig(cfg))
+      .then(cfg => setAppConfig(cfg))
       .catch(console.error);
   }, []);
 
@@ -64,6 +60,13 @@ export default function BookingPage() {
       } else if (isSameDay(date, checkIn)) {
         setCheckIn(null);
       } else {
+        const nights = differenceInDays(date, checkIn);
+        if (appConfig) {
+          const required = getMinStayForDate(checkIn, appConfig);
+          if (nights < required.nights) {
+            setMinStayWarning(required);
+          }
+        }
         setCheckOut(date);
       }
     }
@@ -80,8 +83,8 @@ export default function BookingPage() {
       const allAvailable = availability.every(d => d.isAvailable);
       setIsAvailable(allAvailable);
       if (allAvailable) {
-        setFlexibleBreakdown(bookingService.calculatePrice(checkIn!, checkOut!, guests, 'FLEXIBLE', pricingConfig));
-        setNonRefundableBreakdown(bookingService.calculatePrice(checkIn!, checkOut!, guests, 'NON_REFUNDABLE', pricingConfig));
+        setFlexibleBreakdown(bookingService.calculatePrice(checkIn!, checkOut!, guests, 'FLEXIBLE', appConfig?.pricing));
+        setNonRefundableBreakdown(bookingService.calculatePrice(checkIn!, checkOut!, guests, 'NON_REFUNDABLE', appConfig?.pricing));
       }
     } catch (err) {
       console.error('Error checking availability', err);
@@ -94,10 +97,10 @@ export default function BookingPage() {
   // Recalculate when guests change
   useEffect(() => {
     if (checkIn && checkOut && hasSearched && isAvailable) {
-      setFlexibleBreakdown(bookingService.calculatePrice(checkIn, checkOut, guests, 'FLEXIBLE', pricingConfig));
-      setNonRefundableBreakdown(bookingService.calculatePrice(checkIn, checkOut, guests, 'NON_REFUNDABLE', pricingConfig));
+      setFlexibleBreakdown(bookingService.calculatePrice(checkIn, checkOut, guests, 'FLEXIBLE', appConfig?.pricing));
+      setNonRefundableBreakdown(bookingService.calculatePrice(checkIn, checkOut, guests, 'NON_REFUNDABLE', appConfig?.pricing));
     }
-  }, [guests, checkIn, checkOut, hasSearched, isAvailable, pricingConfig]);
+  }, [guests, checkIn, checkOut, hasSearched, isAvailable, appConfig?.pricing]);
 
   const handleContinueToCheckout = () => {
     setShowCheckout(true);
@@ -191,6 +194,36 @@ export default function BookingPage() {
         title="Reservar | Mejor precio garantizado casa rural Cantabria | La Rasilla"
         description="Reserva tu estancia en La Rasilla directamente desde nuestra web. Sin comisiones, mejor precio garantizado y confirmación inmediata."
       />
+
+      {/* Modal aviso estancia mínima */}
+      {minStayWarning && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex items-center gap-2 text-amber-700">
+                <Info size={20} />
+                <span className="font-bold text-base">Estancia mínima requerida</span>
+              </div>
+              <button onClick={() => setMinStayWarning(null)} className="text-stone-400 hover:text-stone-600">
+                <X size={20} />
+              </button>
+            </div>
+            <p className="text-sm text-stone-600 mb-4">
+              Durante <strong>{minStayWarning.nombre}</strong> la estancia mínima es de{' '}
+              <strong>{minStayWarning.nights} noches</strong>. Las fechas seleccionadas no cumplen este requisito.
+            </p>
+            <p className="text-sm text-stone-500 mb-5">
+              Ajusta las fechas de salida para cumplir con la estancia mínima.
+            </p>
+            <button
+              onClick={() => setMinStayWarning(null)}
+              className="w-full rounded-xl bg-amber-500 py-2.5 text-sm font-bold text-white hover:bg-amber-600 transition-colors"
+            >
+              Entendido, cambiaré las fechas
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Modal de confirmación modo test */}
       {TEST_MODE && testConfirmPending && (
@@ -304,7 +337,7 @@ export default function BookingPage() {
 
             <div className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm border ${checkIn ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-stone-50 border-stone-200 text-stone-500'}`}>
               <Info size={15} className="shrink-0" />
-              <span><strong>Estancia mínima: {minStay.nights} noches</strong> · {minStay.label}</span>
+              <span><strong>Estancia mínima: {minStay.nights} noches</strong> · {minStay.nombre}</span>
             </div>
 
             <button

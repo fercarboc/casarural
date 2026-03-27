@@ -155,9 +155,9 @@ export const bookingService = {
   calculatePrice(checkIn: Date, checkOut: Date, guests: number, rateType: RateType, cfg?: PricingConfig | null): PriceBreakdown {
     const nights = Math.max(0, differenceInDays(checkOut, checkIn));
     const isHighSeason = checkIn.getMonth() === 6 || checkIn.getMonth() === 7;
-    const nightlyPrice          = isHighSeason ? (cfg?.precio_noche_alta   ?? 300) : (cfg?.precio_noche_base   ?? 275);
-    const extraGuestFeePerNight = isHighSeason ? (cfg?.extra_huesped_alta  ?? 30)  : (cfg?.extra_huesped_base  ?? 27.5);
-    const cleaningFee           = cfg?.limpieza                    ?? 50;
+    const nightlyPrice          = isHighSeason ? (cfg?.precio_noche_alta   ?? 330) : (cfg?.precio_noche_base   ?? 300);
+    const extraGuestFeePerNight = isHighSeason ? (cfg?.extra_huesped_alta  ?? 30)  : (cfg?.extra_huesped_base  ?? 30);
+    const cleaningFee           = cfg?.limpieza                    ?? 60;
     const discountPct           = (cfg?.descuento_no_reembolsable  ?? 10) / 100;
     const depositPct            = (cfg?.porcentaje_senal           ?? 30) / 100;
 
