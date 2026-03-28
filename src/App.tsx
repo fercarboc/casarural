@@ -1,5 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
+
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  return null;
+}
 import { AnimatePresence } from 'motion/react';
 import BookingPage from './public/pages/BookingPage';
 import { HomePage } from './public/pages/HomePage';
@@ -138,6 +144,7 @@ export default function App() {
   return (
     <CookieConsentContext.Provider value={cookieConsent}>
     <AuthProvider>
+      <ScrollToTop />
       <AnimatePresence mode="wait">
         <Routes>
           {/* Public Routes */}
