@@ -1,9 +1,8 @@
 import React from 'react';
 import { HeroSection } from '../components/HeroSection';
 import { SectionContainer } from '../components/SectionContainer';
-import { FeatureGrid } from '../components/FeatureGrid';
 import { CTASection } from '../components/CTASection';
-import { Wifi, Car, Coffee, Utensils, Tv, Trees, ShieldCheck, Info, Calendar, Users, Flame, Bath } from 'lucide-react';
+import { Coffee, Utensils, Tv, Trees, ShieldCheck, Info, Calendar, Users, Bath } from 'lucide-react';
 import { MetaTags } from '../components/MetaTags';
 
 export const ServiciosPage: React.FC = () => {
@@ -37,9 +36,9 @@ export const ServiciosPage: React.FC = () => {
               description: "Sin WiFi, sin ruido, sin prisas. El entorno natural de los Valles Pasiegos es la mejor terapia para desconectar de verdad."
             },
             {
-              icon: <Car className="text-emerald-600" />,
-              title: "Parking Privado",
-              description: "Espacio gratuito dentro de la finca para varios vehículos. Seguridad y comodidad total para tu grupo."
+              icon: <Bath className="text-emerald-600" />,
+              title: "Casa totalmente equipada",
+              description: "Útiles de cocina, ropa de cama, toallas y todo lo necesario incluido. Solo tienes que llegar y disfrutar."
             },
             {
               icon: <Utensils className="text-emerald-600" />,
@@ -58,8 +57,8 @@ export const ServiciosPage: React.FC = () => {
             },
             {
               icon: <Trees className="text-emerald-600" />,
-              title: "Jardín privado con barbacoa",
-              description: "Jardín vallado y exclusivo con zona de barbacoa. Seguro para niños pequeños y perfecto para comidas al aire libre."
+              title: "Jardín privado",
+              description: "Jardín totalmente cerrado y exclusivo. Ideal si se viaja con niños pequeños: total seguridad para que jueguen con libertad."
             }
           ].map((service, index) => (
             <div key={index} className="p-8 bg-stone-50 rounded-2xl border border-stone-100 hover:shadow-md transition-shadow">
