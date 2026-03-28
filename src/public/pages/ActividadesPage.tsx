@@ -408,7 +408,7 @@ export const ActividadesPage: React.FC = () => {
             Los Valles Pasiegos como punto de partida
           </h2>
           <p className="mt-6 text-lg text-stone-500 leading-relaxed">
-            La Rasilla está en <strong className="text-stone-700">Corvera de Toranzo</strong>, en el corazón de los Valles Pasiegos.
+            La Rasilla está en <strong className="text-stone-700">Castillo Pedroso - Corvera de Toranzo</strong>, en el corazón de los Valles Pasiegos.
             A 30 minutos de Santander, a 5 minutos de un balneario y rodeada de naturaleza sin tráfico, sin ruido, sin prisas.
             Esto es lo que tienes a tu alrededor.
           </p>
