@@ -207,7 +207,7 @@ export function NewReservationPage() {
   const [saveError,     setSaveError]     = useState<string | null>(null)
   const [createdReserva, setCreatedReserva] = useState<CreatedReserva | null>(null)
 
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>()
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   // ── Derivados ────────────────────────────────────────────────────────────────
   const descuentoNum = parseFloat(descuento_manual) || 0
@@ -268,24 +268,23 @@ export function NewReservationPage() {
           direccion_factura:  direccion_factura || null,
           fecha_entrada,
           fecha_salida,
-          num_huespedes,
-          menores,
+          num_huespedes:       Number(num_huespedes) || 1,
+          menores:             Number(menores) || 0,
           temporada:           priceResult.season_type,
           tarifa,
           precio_noche:        priceResult.precio_noche,
           noches:              priceResult.nights,
           importe_alojamiento: priceResult.importe_alojamiento,
-          importe_extra:       priceResult.importe_extra,
-          importe_limpieza:    priceResult.limpieza,
-          descuento:           priceResult.descuento + descuentoNum,
+          importe_extra:       Number(priceResult.importe_extra) || 0,
+          importe_limpieza:    Number(priceResult.limpieza) || 60,
+          descuento:           Number(priceResult.descuento || 0) + descuentoNum,
           total:               totalFinal,
           importe_senal:       tarifa === 'FLEXIBLE' ? importeSenalFinal : null,
           estado:              'CONFIRMED',
           estado_pago,
-          importe_pagado:      importePagadoNum,
+          importe_pagado:      Number(importe_pagado) || 0,
           origen:              'ADMIN',
           notas_admin:         notas_admin || null,
-          notas_cliente:       notas_cliente || null,
           stripe_session_id:   null,
           stripe_payment_intent: null,
           expires_at:          null,

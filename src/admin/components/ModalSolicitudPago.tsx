@@ -46,10 +46,13 @@ export function ModalSolicitudPago({ reserva, onClose, onSuccess }: Props) {
     setError(null)
 
     try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const authHeader = { Authorization: `Bearer ${session?.access_token}` }
+
       // 1 — Crear sesión Stripe
       const { data: checkout, error: checkoutError } = await supabase.functions.invoke(
         'create-stripe-checkout',
-        { body: { reservaId: reserva.id } }
+        { body: { reservaId: reserva.id }, headers: authHeader }
       )
       if (checkoutError) throw new Error((checkout as any)?.error ?? checkoutError.message)
       if (!checkout?.checkout_url) throw new Error('No se recibió enlace de pago de Stripe')
@@ -66,6 +69,7 @@ export function ModalSolicitudPago({ reserva, onClose, onSuccess }: Props) {
             checkout_url: checkout.checkout_url,
           },
         },
+        headers: authHeader,
       })
       if (emailError) throw new Error(emailError.message)
 

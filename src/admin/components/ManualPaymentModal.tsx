@@ -47,6 +47,9 @@ export function ManualPaymentModal({ reserva, onClose, onSuccess }: Props) {
 
     setLoading(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const authHeader = { Authorization: `Bearer ${session?.access_token}` };
+
       const { data, error: fnError } = await supabase.functions.invoke('register-manual-payment', {
         body: {
           reservaId:      reserva.id,
@@ -56,6 +59,7 @@ export function ManualPaymentModal({ reserva, onClose, onSuccess }: Props) {
           notas:          notas || undefined,
           generarFactura,
         },
+        headers: authHeader,
       });
 
       if (fnError) throw new Error((data as any)?.error ?? fnError.message ?? 'Error desconocido');

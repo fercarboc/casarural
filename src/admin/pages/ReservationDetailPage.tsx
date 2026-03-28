@@ -172,7 +172,9 @@ export const ReservationDetailPage: React.FC = () => {
   }
 
   const isFlexible = r.tarifa === 'FLEXIBLE'
-  const restoPendiente = isFlexible && r.importe_senal ? r.total - r.importe_senal : 0
+  const restoPendiente = isFlexible && r.importe_senal
+    ? Math.max(0, r.total - (r.importe_pagado ?? 0))
+    : 0
 
   return (
     <div className="space-y-6">
