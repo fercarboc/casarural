@@ -93,7 +93,7 @@ export function Condiciones() {
               <NormaItem icon="🕛" titulo="Check-out" texto="Antes de las 12:00 h" />
               <NormaItem icon="👥" titulo="Capacidad máxima" texto="11 huéspedes (10 incluidos en precio)" />
               <NormaItem icon="🚭" titulo="No fumadores" texto="Prohibido fumar en el interior" />
-              <NormaItem icon="🐾" titulo="Mascotas" texto="Consultar previamente" />
+              <NormaItem icon="🐾" titulo="Mascotas" texto="No permitidas" />
               <NormaItem icon="🎉" titulo="Eventos" texto="No permitidos sin autorización previa" />
             </div>
           </Section>
