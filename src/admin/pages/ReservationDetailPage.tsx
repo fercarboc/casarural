@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   ArrowLeft, Calendar, CalendarDays, Users, Mail, Phone, FileText,
   AlertCircle, Loader2, Copy, Check, Send, Edit2, Ban,
-  CreditCard, ClipboardList, UserCheck, MessageSquare, RefreshCw,
+  CreditCard, ClipboardList, UserCheck, RefreshCw,
   ArrowRight, TrendingUp, TrendingDown, Minus
 } from 'lucide-react'
 import { format, parseISO, differenceInDays } from 'date-fns'
@@ -317,14 +317,26 @@ export const ReservationDetailPage: React.FC = () => {
               <div className="border-t border-zinc-100 pt-3 space-y-2">
                 {isFlexible && r.importe_senal ? (
                   <>
+                    {/* Señal: verde si PARTIAL o PAID, ámbar si UNPAID */}
                     <div className="flex justify-between text-sm">
                       <div className="flex items-center gap-2">
-                        <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                        <span className="text-zinc-600">Señal pagada</span>
+                        <span className={`h-2 w-2 rounded-full ${r.estado_pago === 'UNPAID' ? 'bg-amber-400' : 'bg-emerald-500'}`} />
+                        <span className="text-zinc-600">{r.estado_pago === 'UNPAID' ? 'Señal pendiente (50%)' : 'Señal pagada'}</span>
                       </div>
-                      <span className="font-bold text-emerald-700">{r.importe_senal.toLocaleString('es-ES')} €</span>
+                      <span className={`font-bold ${r.estado_pago === 'UNPAID' ? 'text-amber-700' : 'text-emerald-700'}`}>
+                        {r.importe_senal.toLocaleString('es-ES')} €
+                        {r.estado_pago === 'UNPAID' && (
+                          <button
+                            onClick={() => setShowManualPayment(true)}
+                            className="ml-2 flex-shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-zinc-900 px-3 py-1.5 text-xs font-bold text-white hover:bg-zinc-700 transition-all"
+                          >
+                            <CreditCard size={12} /> Cobrar señal
+                          </button>
+                        )}
+                      </span>
                     </div>
-                    {restoPendiente > 0 && (
+                    {/* Resto pendiente: solo cuando PARTIAL */}
+                    {r.estado_pago === 'PARTIAL' && restoPendiente > 0 && (
                       <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center gap-2">
                           <span className="h-2 w-2 rounded-full bg-amber-400" />

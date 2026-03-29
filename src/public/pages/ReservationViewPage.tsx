@@ -3,9 +3,9 @@ import { useParams, Link } from 'react-router-dom'
 import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 import {
-  CheckCircle2, Calendar, Users, Euro, FileText, AlertCircle,
+  CheckCircle2, Calendar, Users, Euro, AlertCircle,
   ChevronDown, ChevronUp, Loader2, Send, ArrowRight, Home,
-  MessageSquare, User, Hash, Phone, Mail, Globe, Baby
+  MessageSquare, User
 } from 'lucide-react'
 import { supabase } from '../../integrations/supabase/client'
 import { MetaTags } from '../components/MetaTags'
@@ -215,7 +215,7 @@ export const ReservationViewPage: React.FC = () => {
                 </div>
                 {reserva.tarifa === 'FLEXIBLE' && reserva.importe_senal && (
                   <div className="flex justify-between text-xs text-stone-500">
-                    <span>Señal abonada (30%)</span>
+                    <span>Señal abonada (50%)</span>
                     <span className="font-medium text-emerald-700">{Number(reserva.importe_senal).toFixed(2)}€</span>
                   </div>
                 )}
