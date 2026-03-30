@@ -54,31 +54,37 @@ export const LaCasaPage: React.FC = () => {
             <img
               src="/images/porche.jpg"
               alt="Porche exterior La Rasilla Valles Pasiegos"
+              loading="lazy"
               className="rounded-2xl shadow-lg w-full aspect-[4/3] object-cover"
             />
             <img
               src="/images/porche2.jpg"
               alt="Jardín y porche casa rural Cantabria"
+              loading="lazy"
               className="rounded-2xl shadow-lg w-full aspect-[4/3] object-cover"
             />
             <img
               src="/images/habitacion1.jpg"
               alt="Habitación doble casa rural Cantabria"
+              loading="lazy"
               className="rounded-2xl shadow-lg w-full aspect-[4/3] object-cover"
             />
             <img
               src="/images/habitacion2.jpg"
               alt="Habitación doble Valles Pasiegos"
+              loading="lazy"
               className="rounded-2xl shadow-lg w-full aspect-[4/3] object-cover"
             />
             <img
               src="/images/habitacion3.jpg"
               alt="Habitación con vistas al valle"
+              loading="lazy"
               className="rounded-2xl shadow-lg w-full aspect-[4/3] object-cover"
             />
             <img
               src="/images/habitacion4.jpg"
               alt="Dormitorio casa rural 11 personas Cantabria"
+              loading="lazy"
               className="rounded-2xl shadow-lg w-full aspect-[4/3] object-cover"
             />
           </div>
@@ -89,16 +95,19 @@ export const LaCasaPage: React.FC = () => {
           <img
             src="/images/cocina.jpg"
             alt="Cocina equipada casa rural Cantabria"
+            loading="lazy"
             className="rounded-2xl shadow-md w-full h-48 object-cover"
           />
           <img
             src="/images/salon1.jpg"
             alt="Salón principal casa rural Valles Pasiegos"
+            loading="lazy"
             className="rounded-2xl shadow-md w-full h-48 object-cover"
           />
           <img
             src="/images/aseo1.jpg"
             alt="Baño completo casa rural Cantabria"
+            loading="lazy"
             className="rounded-2xl shadow-md w-full h-48 object-cover"
           />
         </div>

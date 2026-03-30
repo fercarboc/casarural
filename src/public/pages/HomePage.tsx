@@ -127,21 +127,25 @@ export const HomePage: React.FC = () => {
             <img
               src="/images/porche1.jpg"
               alt="Porche de La Rasilla, casa rural en Valles Pasiegos"
+              loading="lazy"
               className="rounded-2xl shadow-2xl transform hover:-translate-y-2 transition-transform duration-500"
             />
             <img
               src="/images/pueblo1.jpg"
               alt="Castillo Pedroso, Valle de Toranzo, Cantabria"
+              loading="lazy"
               className="mt-12 rounded-2xl shadow-2xl transform hover:-translate-y-2 transition-transform duration-500"
             />
             <img
               src="/images/porche2.jpg"
               alt="Porche y jardín de La Rasilla, casa rural Cantabria"
+              loading="lazy"
               className="rounded-2xl shadow-2xl transform hover:-translate-y-2 transition-transform duration-500"
             />
             <img
               src="/images/pueblo2.jpg"
               alt="Vistas de Castillo Pedroso, Valles Pasiegos"
+              loading="lazy"
               className="mt-12 rounded-2xl shadow-2xl transform hover:-translate-y-2 transition-transform duration-500"
             />
           </div>
@@ -151,21 +155,27 @@ export const HomePage: React.FC = () => {
       {/* SEO Content Block */}
       <section className="bg-stone-50 py-24">
         <div className="mx-auto max-w-4xl px-6 text-center">
-          <h2 className="text-3xl font-serif font-bold text-stone-800 mb-8">Descubre el Turismo Rural en los Valles Pasiegos</h2>
-          <div className="prose prose-stone mx-auto text-stone-600 space-y-6 text-lg leading-relaxed">
+          <h2 className="text-3xl font-serif font-bold text-stone-800 mb-8">Casa Rural La Rasilla — Alojamiento rural en Cantabria para grupos</h2>
+          <div className="prose prose-stone mx-auto text-stone-600 space-y-6 text-lg leading-relaxed text-left">
             <p>
-              Cantabria es un destino que enamora por su contraste entre mar y montaña, y los <strong>Valles Pasiegos</strong> representan la esencia más pura de esta tierra. Si buscas una <strong>casa rural en Cantabria de alquiler íntegro</strong>, La Rasilla te ofrece la oportunidad de sumergirte en un paisaje de praderas infinitas, cabañas tradicionales y una paz que solo se interrumpe por el sonido de la naturaleza.
+              <strong>Casa Rural La Rasilla</strong> es un alojamiento rural en Cantabria ideal para grupos de hasta 11 personas, situado en los <strong>Valles Pasiegos</strong>, una de las zonas más naturales y tranquilas del norte de España.
             </p>
             <p>
-              Nuestra ubicación privilegiada permite disfrutar de <strong>escapadas rurales en el norte de España</strong> inolvidables. Ya sea que viajes en familia o con un grupo de amigos, nuestra capacidad para <strong>10 u 11 personas</strong> asegura que todos tengan su espacio. El <strong>turismo rural en Cantabria</strong> ha evolucionado, y en La Rasilla combinamos la arquitectura tradicional con servicios modernos para garantizar una estancia cómoda y auténtica.
+              La casa se alquila de forma íntegra, ofreciendo privacidad total, jardín exterior totalmente cerrado y <strong>zona de barbacoa</strong>, perfecta para disfrutar en grupo de comidas al aire libre en un entorno natural. Si buscas una <Link to="/casa-rural-con-barbacoa-cantabria" className="text-emerald-700 hover:underline">casa rural con barbacoa en Cantabria</Link>, La Rasilla es exactamente lo que necesitas.
             </p>
             <p>
-              Desde aquí, podrás explorar rutas de senderismo por el <strong>Valle de Toranzo</strong>, visitar las famosas <strong>Cuevas del Castillo</strong> en Puente Viesgo, descubrir las <strong>Bodegas Seldaiz</strong> a 1 km o sorprenderte con el salto de agua de <strong>El Churrón de Borleña</strong>. Elegir un <strong>alojamiento rural en los Valles Pasiegos</strong> es elegir desconexión, aire puro y recuerdos que durarán toda la vida. Reserva directamente con nosotros para obtener las mejores condiciones y atención personalizada.
+              Es una opción ideal para escapadas familiares, reuniones con amigos o fines de semana rurales, combinando comodidad, naturaleza y una ubicación privilegiada en Cantabria. Descubre todo lo que ofrece nuestra <Link to="/casa-rural-cantabria-grupos" className="text-emerald-700 hover:underline">casa rural para grupos en Cantabria</Link>.
+            </p>
+            <p>
+              El entorno de los <Link to="/casa-rural-valles-pasiegos" className="text-emerald-700 hover:underline">Valles Pasiegos</Link> te sorprenderá con rutas de senderismo, pueblos con encanto y una gastronomía local inigualable. Si buscas una <strong>casa rural en Cantabria con barbacoa y espacio para grupos</strong>, La Rasilla es una de las mejores opciones en los Valles Pasiegos.
             </p>
           </div>
-          <div className="mt-12">
+          <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
             <Link to="/reservar" className="rounded-full bg-stone-900 px-10 py-4 text-lg font-bold text-white shadow-xl transition-all hover:bg-stone-800">
               Reservar ahora al mejor precio
+            </Link>
+            <Link to="/casa-rural-cantabria-grupos" className="rounded-full border-2 border-stone-300 px-10 py-4 text-lg font-bold text-stone-700 transition-all hover:border-stone-500">
+              Ver info para grupos
             </Link>
           </div>
         </div>

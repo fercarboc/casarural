@@ -42,6 +42,15 @@ import { ConfigPage } from './admin/pages/ConfigPage';
 import { ICalPage } from './admin/pages/ICalPage';
 
 import { ReservationViewPage } from './public/pages/ReservationViewPage';
+import { CasaRuralGruposPage } from './public/pages/seo/CasaRuralGruposPage';
+import { CasaRuralBarbacoaPage } from './public/pages/seo/CasaRuralBarbacoaPage';
+import { CasaRuralVallesPasiegosPage } from './public/pages/seo/CasaRuralVallesPasiegosPage';
+import { BlogIndexPage } from './public/pages/blog/BlogIndexPage';
+import { QueVerVallesPasiegosPost } from './public/pages/blog/QueVerVallesPasiegosPost';
+import { RutasSenderismoCantabriaPost } from './public/pages/blog/RutasSenderismoCantabriaPost';
+import { CasaRuralGruposGuiaPost } from './public/pages/blog/CasaRuralGruposGuiaPost';
+import { QueHacerCantabriaPost } from './public/pages/blog/QueHacerCantabriaPost';
+import { ParqueCabarcenoPost } from './public/pages/blog/ParqueCabarcenoPost';
 import ReservaConfirmada from './public/pages/ReservaConfirmada';
 import { CancelarReserva } from './public/pages/CancelarReserva';
 import { CambioFechas } from './public/pages/CambioFechas';
@@ -56,6 +65,7 @@ const NAV_LINKS = [
   { to: '/servicios', label: 'Servicios' },
   { to: '/actividades', label: 'Actividades' },
   { to: '/donde-estamos', label: 'Dónde estamos' },
+  { to: '/blog', label: 'Blog' },
   { to: '/contacto', label: 'Contacto' },
 ];
 
@@ -171,6 +181,19 @@ export default function App() {
           <Route path="/rgpd"                   element={<PublicLayout><RGPD /></PublicLayout>} />
           <Route path="/politica-cancelaciones" element={<PublicLayout><PoliticaCancelaciones /></PublicLayout>} />
           <Route path="/soporte" element={<PublicLayout><SoportePage /></PublicLayout>} />
+
+          {/* SEO Routes */}
+          <Route path="/casa-rural-cantabria-grupos" element={<PublicLayout><CasaRuralGruposPage /></PublicLayout>} />
+          <Route path="/casa-rural-con-barbacoa-cantabria" element={<PublicLayout><CasaRuralBarbacoaPage /></PublicLayout>} />
+          <Route path="/casa-rural-valles-pasiegos" element={<PublicLayout><CasaRuralVallesPasiegosPage /></PublicLayout>} />
+
+          {/* Blog Routes */}
+          <Route path="/blog" element={<PublicLayout><BlogIndexPage /></PublicLayout>} />
+          <Route path="/blog/que-ver-valles-pasiegos" element={<PublicLayout><QueVerVallesPasiegosPost /></PublicLayout>} />
+          <Route path="/blog/rutas-senderismo-cantabria" element={<PublicLayout><RutasSenderismoCantabriaPost /></PublicLayout>} />
+          <Route path="/blog/casa-rural-grupos-cantabria-guia" element={<PublicLayout><CasaRuralGruposGuiaPost /></PublicLayout>} />
+          <Route path="/blog/que-hacer-cantabria-escapada-rural" element={<PublicLayout><QueHacerCantabriaPost /></PublicLayout>} />
+          <Route path="/blog/parque-cabaraceno-guia" element={<PublicLayout><ParqueCabarcenoPost /></PublicLayout>} />
           
           {/* Admin Auth */}
           <Route path="/admin/login" element={<LoginPage />} />

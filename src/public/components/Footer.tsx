@@ -14,8 +14,7 @@ export const Footer = () => {
               La Rasilla
             </Link>
             <p className="text-sm leading-relaxed text-stone-400">
-              Alojamiento rural premium en el corazón de los Valles Pasiegos. 
-              Un refugio diseñado para el descanso, la naturaleza y la desconexión total en Cantabria.
+              Alojamiento rural en los Valles Pasiegos, Cantabria, ideal para grupos de hasta 11 personas con jardín privado y barbacoa. Alquiler íntegro con reserva directa.
             </p>
             <div className="flex gap-4">
               <a href="#" className="hover:text-emerald-400 transition-colors"><Instagram size={20} /></a>
@@ -38,6 +37,10 @@ export const Footer = () => {
                 <li><Link to="/actividades" className="hover:text-emerald-400 transition-colors">Actividades</Link></li>
                 <li><Link to="/reservar" className="hover:text-emerald-400 transition-colors">Reservas</Link></li>
                 <li><Link to="/contacto" className="hover:text-emerald-400 transition-colors">Contacto</Link></li>
+                <li><Link to="/casa-rural-cantabria-grupos" className="hover:text-emerald-400 transition-colors">Casa rural para grupos</Link></li>
+                <li><Link to="/casa-rural-con-barbacoa-cantabria" className="hover:text-emerald-400 transition-colors">Casa rural con barbacoa</Link></li>
+                <li><Link to="/casa-rural-valles-pasiegos" className="hover:text-emerald-400 transition-colors">Valles Pasiegos</Link></li>
+                <li><Link to="/blog" className="hover:text-emerald-400 transition-colors">Blog</Link></li>
               </ul>
             </div>
             <div className="space-y-6">

@@ -75,6 +75,7 @@ export const ServiciosPage: React.FC = () => {
           <img
             src="/images/porche2.jpg"
             alt="Porche exterior de La Rasilla, casa rural Valles Pasiegos"
+            loading="lazy"
             className="rounded-3xl shadow-xl"
           />
           <div className="space-y-6">
