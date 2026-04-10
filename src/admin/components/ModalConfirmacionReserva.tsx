@@ -38,7 +38,7 @@ export function ModalConfirmacionReserva({ reserva, onClose, onSuccess }: Props)
   const pendiente = reserva.total - (reserva.importe_pagado ?? 0)
 
   const [tipoPago, setTipoPago]           = useState<TipoPago>('STRIPE')
-  const [titularCuenta, setTitularCuenta] = useState('La Rasilla')
+  const [titularCuenta, setTitularCuenta] = useState('Fernando Carbonell Cabo')
   const [iban, setIban]                   = useState('')
   const [importeTransferencia, setImporteTransferencia] = useState(pendiente.toFixed(2))
   const [notasCliente, setNotasCliente]   = useState('')
@@ -170,7 +170,7 @@ export function ModalConfirmacionReserva({ reserva, onClose, onSuccess }: Props)
               <div>
                 <label className="block text-xs font-medium text-zinc-600 mb-1">IBAN</label>
                 <input type="text" value={iban} onChange={e => setIban(e.target.value)}
-                  placeholder="ES00 0000 0000 0000 0000 0000"
+                  placeholder="ES84 1563 2626 3932 6181 0395"
                   className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-zinc-400" />
               </div>
               <div>

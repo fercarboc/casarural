@@ -1,13 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import {
-  Search, Download, Mail, Phone, Calendar, Euro, X, ChevronRight,
-  Users, FileText, MessageSquare, CheckCircle2, Clock, AlertCircle,
-  Loader2, BookOpen, User, ExternalLink, RefreshCw, Pencil, Trash2, Plus
+  Search, Mail, Phone, Calendar, Euro, X, ChevronRight,
+  Users, FileText, MessageSquare, CheckCircle2, Clock,
+  Loader2, BookOpen, ExternalLink, RefreshCw, Pencil, Trash2, Plus,
+  Reply, BarChart2, Archive, Send,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { supabase } from '../../integrations/supabase/client'
+import { ModalResponderConsulta } from '../components/ModalResponderConsulta'
+import { ModalPresupuesto } from '../components/ModalPresupuesto'
 
 // ── Tipos ─────────────────────────────────────────────────
 
@@ -21,6 +24,21 @@ interface Consulta {
   estado: 'NUEVA' | 'VISTA' | 'RESPONDIDA' | 'ARCHIVADA'
   reserva_id?: string
   notas_admin?: string
+  created_at: string
+  updated_at?: string
+}
+
+interface ConsultaRespuesta {
+  id: string
+  tipo: 'EMAIL_LIBRE' | 'PRESUPUESTO' | 'SIN_DISPONIBILIDAD'
+  asunto?: string
+  to_email: string
+  fecha_entrada?: string
+  fecha_salida?: string
+  num_huespedes?: number
+  total_ofertado?: number
+  habia_disponibilidad?: boolean
+  enviado_ok: boolean
   created_at: string
 }
 
@@ -727,9 +745,13 @@ function ConsultasTab({ consultas, onRefresh }: { consultas: Consulta[]; onRefre
 }
 
 function ConsultaCard({ consulta: c, onRefresh }: { key?: React.Key; consulta: Consulta; onRefresh: () => void }) {
-  const [notas, setNotas] = useState(c.notas_admin ?? '')
-  const [saving, setSaving] = useState(false)
-  const [open, setOpen] = useState(c.estado === 'NUEVA')
+  const [notas,    setNotas]    = useState(c.notas_admin ?? '')
+  const [saving,   setSaving]   = useState(false)
+  const [open,     setOpen]     = useState(c.estado === 'NUEVA')
+  const [modalEmail,       setModalEmail]       = useState(false)
+  const [modalPresupuesto, setModalPresupuesto] = useState(false)
+  const [historial,        setHistorial]        = useState<ConsultaRespuesta[]>([])
+  const [loadingHist,      setLoadingHist]      = useState(false)
 
   const updateEstado = async (estado: EstadoConsulta) => {
     await supabase.from('consultas').update({ estado, updated_at: new Date().toISOString() }).eq('id', c.id)
@@ -743,64 +765,197 @@ function ConsultaCard({ consulta: c, onRefresh }: { key?: React.Key; consulta: C
     setSaving(false)
   }
 
+  const loadHistorial = async () => {
+    if (historial.length > 0) return // ya cargado
+    setLoadingHist(true)
+    const { data } = await supabase
+      .from('consulta_respuestas')
+      .select('id, tipo, asunto, to_email, fecha_entrada, fecha_salida, num_huespedes, total_ofertado, habia_disponibilidad, enviado_ok, created_at')
+      .eq('consulta_id', c.id)
+      .order('created_at', { ascending: false })
+    setHistorial(data ?? [])
+    setLoadingHist(false)
+  }
+
+  const handleOpen = () => {
+    const next = !open
+    setOpen(next)
+    if (next) loadHistorial()
+  }
+
+  const handleModalSuccess = () => {
+    // Refrescar historial y lista
+    setHistorial([])
+    setTimeout(() => loadHistorial(), 300)
+    onRefresh()
+  }
+
+  const tipoLabel: Record<string, string> = {
+    EMAIL_LIBRE: 'Email libre',
+    PRESUPUESTO: 'Presupuesto',
+    SIN_DISPONIBILIDAD: 'Sin disponibilidad',
+  }
+
   return (
-    <div className={`rounded-xl border overflow-hidden ${c.estado === 'NUEVA' ? 'border-amber-200' : 'border-zinc-200'}`}>
-      <button onClick={() => setOpen(!open)}
-        className="w-full flex items-start justify-between p-3 text-left hover:bg-zinc-50 transition-colors">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <ConsultaEstadoBadge estado={c.estado} />
-            <span className="text-[10px] text-zinc-400">{format(parseISO(c.created_at), "d MMM yyyy HH:mm", { locale: es })}</span>
-          </div>
-          <p className="text-sm font-semibold text-zinc-800 line-clamp-1">{c.asunto || 'Consulta general'}</p>
-          {!open && <p className="text-xs text-zinc-400 line-clamp-1 mt-0.5">{c.mensaje}</p>}
-        </div>
-        <ChevronRight size={14} className={`text-zinc-300 shrink-0 mt-1 transition-transform ${open ? 'rotate-90' : ''}`} />
-      </button>
+    <>
+      {/* Modales */}
+      {modalEmail && (
+        <ModalResponderConsulta
+          consulta={c}
+          onClose={() => setModalEmail(false)}
+          onSuccess={handleModalSuccess}
+        />
+      )}
+      {modalPresupuesto && (
+        <ModalPresupuesto
+          consulta={c}
+          onClose={() => setModalPresupuesto(false)}
+          onSuccess={handleModalSuccess}
+        />
+      )}
 
-      {open && (
-        <div className="border-t border-zinc-100 p-3 space-y-3">
-          <p className="text-sm text-zinc-700 whitespace-pre-wrap leading-relaxed bg-zinc-50 rounded-lg p-3">{c.mensaje}</p>
-
-          {/* Notas admin */}
+      <div className={`rounded-xl border overflow-hidden ${c.estado === 'NUEVA' ? 'border-amber-200' : 'border-zinc-200'}`}>
+        {/* Cabecera */}
+        <button onClick={handleOpen}
+          className="w-full flex items-start justify-between p-3 text-left hover:bg-zinc-50 transition-colors">
           <div>
-            <label className="block text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mb-1">Notas internas</label>
-            <textarea
-              value={notas}
-              onChange={e => setNotas(e.target.value)}
-              rows={2}
-              placeholder="Añade notas sobre esta consulta..."
-              className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-xs text-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-900 resize-none"
-            />
-            <button
-              onClick={saveNotas}
-              disabled={saving}
-              className="mt-1.5 px-3 py-1.5 bg-zinc-900 text-white text-xs rounded-lg hover:bg-zinc-700 transition-colors disabled:opacity-50"
-            >
-              {saving ? 'Guardando...' : 'Guardar nota'}
-            </button>
+            <div className="flex items-center gap-2 mb-1">
+              <ConsultaEstadoBadge estado={c.estado} />
+              <span className="text-[10px] text-zinc-400">{format(parseISO(c.created_at), "d MMM yyyy HH:mm", { locale: es })}</span>
+            </div>
+            <p className="text-sm font-semibold text-zinc-800 line-clamp-1">{c.asunto || 'Consulta general'}</p>
+            {!open && <p className="text-xs text-zinc-400 line-clamp-1 mt-0.5">{c.mensaje}</p>}
           </div>
+          <ChevronRight size={14} className={`text-zinc-300 shrink-0 mt-1 transition-transform ${open ? 'rotate-90' : ''}`} />
+        </button>
 
-          {/* Cambiar estado */}
-          <div>
-            <label className="block text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mb-1.5">Cambiar estado</label>
-            <div className="flex flex-wrap gap-1.5">
-              {(['NUEVA', 'VISTA', 'RESPONDIDA', 'ARCHIVADA'] as EstadoConsulta[]).map(e => (
+        {open && (
+          <div className="border-t border-zinc-100 p-3 space-y-3">
+            {/* Mensaje original */}
+            <p className="text-sm text-zinc-700 whitespace-pre-wrap leading-relaxed bg-zinc-50 rounded-lg p-3">{c.mensaje}</p>
+
+            {/* ── Acciones comerciales ── */}
+            <div>
+              <label className="block text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mb-2">Acciones</label>
+              <div className="grid grid-cols-2 gap-1.5">
                 <button
-                  key={e}
-                  onClick={() => updateEstado(e)}
-                  className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-colors ${
-                    c.estado === e ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200'
-                  }`}
+                  onClick={() => setModalEmail(true)}
+                  className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-zinc-900 text-white text-xs font-semibold hover:bg-zinc-700 transition-colors"
                 >
-                  {e === 'NUEVA' ? 'Nueva' : e === 'VISTA' ? 'Vista' : e === 'RESPONDIDA' ? 'Respondida' : 'Archivada'}
+                  <Reply size={12} /> Responder
                 </button>
-              ))}
+                <button
+                  onClick={() => setModalPresupuesto(true)}
+                  className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-emerald-700 text-white text-xs font-semibold hover:bg-emerald-800 transition-colors"
+                >
+                  <Send size={12} /> Presupuesto
+                </button>
+                <button
+                  onClick={() => updateEstado('RESPONDIDA')}
+                  disabled={c.estado === 'RESPONDIDA'}
+                  className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-zinc-100 text-zinc-600 text-xs font-semibold hover:bg-zinc-200 transition-colors disabled:opacity-40"
+                >
+                  <CheckCircle2 size={12} /> Marcar respondida
+                </button>
+                <button
+                  onClick={() => updateEstado('ARCHIVADA')}
+                  disabled={c.estado === 'ARCHIVADA'}
+                  className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-zinc-100 text-zinc-600 text-xs font-semibold hover:bg-zinc-200 transition-colors disabled:opacity-40"
+                >
+                  <Archive size={12} /> Archivar
+                </button>
+              </div>
+            </div>
+
+            {/* Notas internas */}
+            <div>
+              <label className="block text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mb-1">Notas internas</label>
+              <textarea
+                value={notas}
+                onChange={e => setNotas(e.target.value)}
+                rows={2}
+                placeholder="Añade notas sobre esta consulta..."
+                className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-xs text-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-900 resize-none"
+              />
+              <button
+                onClick={saveNotas}
+                disabled={saving}
+                className="mt-1.5 px-3 py-1.5 bg-zinc-800 text-white text-xs rounded-lg hover:bg-zinc-700 transition-colors disabled:opacity-50"
+              >
+                {saving ? 'Guardando...' : 'Guardar nota'}
+              </button>
+            </div>
+
+            {/* Estado manual */}
+            <div>
+              <label className="block text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mb-1.5">Estado</label>
+              <div className="flex flex-wrap gap-1.5">
+                {(['NUEVA', 'VISTA', 'RESPONDIDA', 'ARCHIVADA'] as EstadoConsulta[]).map(e => (
+                  <button
+                    key={e}
+                    onClick={() => updateEstado(e)}
+                    className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-colors ${
+                      c.estado === e ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200'
+                    }`}
+                  >
+                    {e === 'NUEVA' ? 'Nueva' : e === 'VISTA' ? 'Vista' : e === 'RESPONDIDA' ? 'Respondida' : 'Archivada'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* ── Historial de respuestas ── */}
+            <div>
+              <label className="block text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                <BarChart2 size={10} /> Historial de respuestas enviadas
+              </label>
+              {loadingHist ? (
+                <div className="flex justify-center py-3">
+                  <Loader2 size={14} className="animate-spin text-zinc-300" />
+                </div>
+              ) : historial.length === 0 ? (
+                <p className="text-[10px] text-zinc-300 italic py-1">Sin respuestas enviadas aún</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {historial.map(r => (
+                    <div key={r.id} className={`rounded-lg border px-3 py-2 text-[10px] flex items-start justify-between gap-2 ${
+                      r.enviado_ok ? 'border-zinc-200 bg-white' : 'border-red-200 bg-red-50'
+                    }`}>
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className={`px-1.5 py-0.5 rounded font-bold ${
+                            r.tipo === 'PRESUPUESTO' ? 'bg-emerald-100 text-emerald-700'
+                            : r.tipo === 'SIN_DISPONIBILIDAD' ? 'bg-amber-100 text-amber-700'
+                            : 'bg-zinc-100 text-zinc-500'
+                          }`}>{tipoLabel[r.tipo]}</span>
+                          {r.total_ofertado && (
+                            <span className="font-bold text-zinc-800">{Number(r.total_ofertado).toFixed(0)}€</span>
+                          )}
+                        </div>
+                        {r.fecha_entrada && r.fecha_salida && (
+                          <p className="text-zinc-400">
+                            {format(parseISO(r.fecha_entrada), 'd MMM', { locale: es })} → {format(parseISO(r.fecha_salida), 'd MMM yyyy', { locale: es })}
+                            {r.num_huespedes ? ` · ${r.num_huespedes} huésp.` : ''}
+                          </p>
+                        )}
+                        {r.asunto && <p className="text-zinc-400 truncate max-w-[200px]">{r.asunto}</p>}
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-zinc-400">{format(parseISO(r.created_at), 'd MMM HH:mm', { locale: es })}</p>
+                        {r.enviado_ok
+                          ? <CheckCircle2 size={11} className="text-emerald-500 ml-auto mt-0.5" />
+                          : <span className="text-red-500">Error</span>
+                        }
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </>
   )
 }
 
