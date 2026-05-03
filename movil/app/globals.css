@@ -143,23 +143,6 @@
   padding-top: max(0.5rem, env(safe-area-inset-top));
 }
 
-/* Cuando se abre como PWA fullscreen en iOS (sin barra del navegador),
-   el body necesita cubrir toda la pantalla incluyendo las safe areas */
-@media (display-mode: standalone) {
-  body {
-    /* Previene cualquier scroll de body — el scroll ocurre dentro de cada página */
-    position: fixed;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-  }
-  /* El contenedor de cada página sí puede hacer scroll */
-  main {
-    height: 100%;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-}
 
 /* Pull to refresh animation */
 @keyframes pull-down {
