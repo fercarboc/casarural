@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE article PUBLIC "-//OASIS//DTD DocBook XML V4.1.2//EN" "http://www.oasis-open.org/docbook/xml/4.1.2/docbookx.dtd">
+<article lang="">
+  <para>&lt;?xml version="1.0" encoding="UTF-8"?&gt;</para>
+  <para>&lt;urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"&gt;</para>
+  <para/>
+  <para>&lt;url&gt;</para>
+  <para>&lt;loc&gt;https://casarurallarasilla.com/reservas&lt;/loc&gt;</para>
+  <para>&lt;lastmod&gt;2026-04-16&lt;/lastmod&gt;</para>
+  <para> &lt;changefreq&gt;monthly&lt;/changefreq&gt;</para>
+  <para>  &lt;priority&gt;0.9&lt;/priority&gt;</para>
+  <para>  &lt;/url&gt;</para>
+  <para/>
+  <para>  &lt;url&gt;</para>
+  <para>&lt;loc&gt;https://casarurallarasilla.com/galeria&lt;/loc&gt;</para>
+  <para> &lt;lastmod&gt;2026-04-16&lt;/lastmod&gt;</para>
+  <para> &lt;changefreq&gt;monthly&lt;/changefreq&gt;</para>
+  <para>&lt;priority&gt;0.8&lt;/priority&gt;</para>
+  <para>&lt;/url&gt;</para>
+  <para/>
+  <para>&lt;url&gt;</para>
+  <para> &lt;loc&gt;https://casarurallarasilla.com/entorno&lt;/loc&gt;</para>
+  <para>&lt;lastmod&gt;2026-04-16&lt;/lastmod&gt;</para>
+  <para> &lt;changefreq&gt;monthly&lt;/changefreq&gt;</para>
+  <para> &lt;priority&gt;0.7&lt;/priority&gt;</para>
+  <para>&lt;/url&gt;</para>
+  <para/>
+  <para>&lt;url&gt;</para>
+  <para>&lt;loc&gt;https://casarurallarasilla.com/contacto&lt;/loc&gt;</para>
+  <para>&lt;lastmod&gt;2026-04-16&lt;/lastmod&gt;</para>
+  <para>&lt;changefreq&gt;monthly&lt;/changefreq&gt;</para>
+  <para>&lt;priority&gt;0.8&lt;/priority&gt;</para>
+  <para>&lt;/url&gt;</para>
+  <para/>
+  <para>&lt;/urlset&gt;</para>
+  <para/>
+  <para/>
+</article>
